@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#4f46e5" />
+  <title>Bag Production · NKPL</title>
+  <link rel="stylesheet" href="/assets/styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <!-- ── Top bar ── -->
+  <div class="topbar">
+    <div class="brand">
+      <span class="dot">N</span>
+      <span>NKPL <small>Production</small></span>
+    </div>
+    <div class="divider"></div>
+    <span class="title">Bag Production · Shift Check</span>
+    <div class="spacer"></div>
+    <div class="meta">
+      <label for="reportDate">Date</label>
+      <input type="date" id="reportDate" />
+      <div class="shift-wrap">
+        <label>Shift</label>
+        <div class="shift-toggle-group" id="editorShiftGroup">
+          <button type="button" class="shift-toggle-btn active" data-shift="A">A</button>
+          <button type="button" class="shift-toggle-btn" data-shift="B">B</button>
+          <button type="button" class="shift-toggle-btn" data-shift="all">All</button>
+        </div>
+      </div>
+      <div class="tol-wrap">
+        <label>Tolerance</label>
+        <strong>±1.5 bags</strong>
+        <span>fixed</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Workspace ── -->
+  <div class="workspace">
+
+    <!-- Left: Calculator -->
+    <div class="panel-left">
+      <div class="panel-head">
+        <h2>Production Calculator</h2>
+        <p>Enter parameters — target updates live. Add actual bags and press Enter or click "Log entry" to save the production entry.</p>
+      </div>
+
+      <div class="calc-body">
+        <!-- Params grid -->
+        <div class="intake-card">
+          <div class="field machine-field">
+            <label for="machineName">Machine / Line <span class="hint">Used in day and week analytics</span></label>
+            <div class="input-wrap"><input type="text" id="machineName" placeholder="e.g. Machine 4" /></div>
+          </div>
+          <div class="field item-field">
+            <label>Item / Type <span class="hint">Grammage, width and product family</span></label>
+            <div class="item-inputs">
+              <div class="input-wrap"><input type="number" id="itemGrammage" inputmode="decimal" min="0" step="any" placeholder="11.5" aria-label="Item grammage" /><span class="unit">gm</span></div>
+              <div class="input-wrap"><input type="number" id="itemMm" inputmode="decimal" min="0" step="any" placeholder="128" aria-label="Item width millimetres" /><span class="unit">mm</span></div>
+              <div class="item-description"><input type="text" id="itemDescription" placeholder="CSD PCO Green, PCO, Star" aria-label="Item description" /></div>
+            </div>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="cycleTime">Cycle Time <span class="hint">Seconds per cycle</span></label>
+            <div class="input-wrap"><input type="number" id="cycleTime" inputmode="decimal" min="0" step="any" placeholder="e.g. 22.9" /><span class="unit">s</span></div>
+          </div>
+          <div class="field">
+            <label for="cavity">Cavity <span class="hint">Number of cavities</span></label>
+            <div class="input-wrap"><input type="number" id="cavity" inputmode="decimal" min="0" step="any" placeholder="e.g. 32" /><span class="unit">nos</span></div>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="hours">Run Hours <span class="hint">Production time</span></label>
+            <div class="input-wrap"><input type="number" id="hours" inputmode="decimal" min="0" step="any" placeholder="e.g. 12" /><span class="unit">hr</span></div>
+          </div>
+          <div class="field">
+            <label for="kgPerBag">Weight / Bag <span class="hint">Packed bag weight</span></label>
+            <div class="input-wrap"><input type="number" id="kgPerBag" inputmode="decimal" min="0" step="any" placeholder="e.g. 30" /><span class="unit">kg</span></div>
+          </div>
+        </div>
+        <div class="field-row full">
+          <div class="field actual">
+            <label for="actualBags">Actual Bags <span class="hint">Optional — checks vs target</span></label>
+            <div class="input-wrap"><input type="number" id="actualBags" inputmode="decimal" min="0" step="any" placeholder="e.g. 24" /><span class="unit">bags</span></div>
+          </div>
+        </div>
+
+        <!-- Target results -->
+        <div class="results-strip">
+          <div class="res primary">
+            <div class="rtag">Target</div>
+            <div class="rval" id="targetBags">—</div>
+            <div class="rsub" id="targetExact">Bags per formula</div>
+          </div>
+          <div class="res">
+            <div class="rtag">Target Weight</div>
+            <div class="rval" id="targetKg">—</div>
+            <div class="rsub" id="targetPieces">Total output</div>
+          </div>
+        </div>
+
+        <div class="stat-strip">
+          <div class="stat"><span>Pieces</span><b id="statPieces">—</b></div>
+          <div class="stat"><span>Bags / hr</span><b id="statRate">—</b></div>
+          <div class="stat"><span>Kg / hr</span><b id="statKgRate">—</b></div>
+        </div>
+
+        <!-- Discrepancy result -->
+        <div class="disc" id="discPanel" aria-live="polite">
+          <div class="disc-top">
+            <span class="disc-status" id="discStatus">—</span>
+            <button class="disc-log-btn" id="discLogBtn" type="button">Log entry ↓</button>
+          </div>
+          <div class="disc-detail" id="discDetail"></div>
+        </div>
+
+        <div class="msg" id="msg"></div>
+
+        <div class="calc-actions">
+          <button class="btn-ghost" id="resetBtn" type="button">Reset fields</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Shift Check -->
+    <div class="panel-right">
+
+      <!-- Check header -->
+      <div class="check-head no-print">
+        <h2>Shift Production Check</h2>
+        <div class="ch-div"></div>
+        <div class="actions">
+          <button class="mini-btn" id="exportBackupBtn" type="button">Export backup</button>
+          <button class="mini-btn" id="importBackupBtn" type="button">Import backup</button>
+          <button class="mini-btn" id="clearLinesBtn" type="button">Clear all</button>
+        </div>
+        <div class="spacer"></div>
+        <span class="sync-state" id="syncState">Loading shared sheet...</span>
+      </div>
+      <input id="backupFileInput" type="file" accept=".json,application/json" style="display:none" />
+
+      <div class="tabbar no-print">
+        <button class="tab-btn active" data-view="editor" type="button">Editor</button>
+        <button class="tab-btn" data-view="daily" type="button">Daily view</button>
+        <button class="tab-btn" data-view="weekly" type="button">Weekly view</button>
+      </div>
+
+      <div class="view-panel active" id="editorView">
+        <div class="summary-bar" id="summary" aria-live="polite">
+          <div id="printHead">
+            <h2>NKPL · Shift Production Check</h2>
+            <div class="ph-sub" id="phSub"></div>
+          </div>
+          <div id="sumLine" style="display:flex;gap:14px;flex-wrap:wrap;align-items:center"></div>
+          <div class="bar-sep"></div>
+          <div id="sumTotals" style="font-size:12px;color:#334155"></div>
+        </div>
+        <div class="lines-scroll">
+          <div class="lines" id="lines"></div>
+          <div class="empty" id="emptyState">
+            <strong>No production entries logged yet</strong>
+            <span>Enter actual bags in the calculator. Press Enter or click "Log entry" to save the production entry.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="view-panel" id="dailyView">
+        <div class="history-tools">
+          <button class="mini-btn" id="dailyRefreshBtn" type="button">Refresh</button>
+          <button class="mini-btn" id="dailyOpenBtn" type="button">Open current day</button>
+          <button class="mini-btn accent" id="dailyPrintBtn" type="button">Print selected day</button>
+          <div class="spacer"></div>
+          <div class="shift-filter-group" id="dailyShiftFilterGroup">
+            <button class="mini-btn active" data-shift="total" type="button">Total</button>
+            <button class="mini-btn" data-shift="A" type="button">Shift A</button>
+            <button class="mini-btn" data-shift="B" type="button">Shift B</button>
+          </div>
+        </div>
+        <div class="report-scroll">
+          <div class="report-surface" id="dailyReport"></div>
+          <div class="history-section no-print">
+            <div class="section-heading">
+              <div>
+                <span class="eyebrow">Archive</span>
+                <h3>Saved production days</h3>
+              </div>
+              <span class="section-note">Only days with production entries appear here.</span>
+            </div>
+            <div class="history-list" id="dailyHistory"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="view-panel" id="weeklyView">
+        <div class="history-tools">
+          <button class="mini-btn" id="weeklyRefreshBtn" type="button">Refresh</button>
+          <button class="mini-btn" id="weeklyOpenBtn" type="button">Open this week</button>
+          <button class="mini-btn" id="weeklyCsvBtn" type="button">Export CSV</button>
+          <button class="mini-btn accent" id="weeklyPrintBtn" type="button">Print selected week</button>
+          <div class="spacer"></div>
+          <div class="shift-filter-group" id="weeklyShiftFilterGroup">
+            <button class="mini-btn active" data-shift="total" type="button">Total</button>
+            <button class="mini-btn" data-shift="A" type="button">Shift A</button>
+            <button class="mini-btn" data-shift="B" type="button">Shift B</button>
+          </div>
+        </div>
+        <div class="report-scroll">
+          <div class="report-surface" id="weeklyReport"></div>
+          <div class="history-section no-print">
+            <div class="section-heading">
+              <div>
+                <span class="eyebrow">Archive</span>
+                <h3>Saved production weeks</h3>
+              </div>
+              <span class="section-note">Weekly analytics update automatically as each dated log syncs.</span>
+            </div>
+            <div class="history-list" id="weeklyHistory"></div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /panel-right -->
+  </div><!-- /workspace -->
+
+  <script src="/assets/analytics.js"></script>
+  <script src="/assets/app.js"></script>
+</body>
+</html>

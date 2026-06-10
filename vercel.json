@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/production.js": {
+      "maxDuration": 10
+    }
+  }
+}
