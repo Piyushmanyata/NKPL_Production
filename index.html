@@ -3,8 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#4f46e5" />
+  <meta name="theme-color" content="#09090b" />
   <title>Bag Production · NKPL</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/assets/styles.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -136,9 +139,15 @@
         <h2>Shift Production Check</h2>
         <div class="ch-div"></div>
         <div class="actions">
-          <button class="mini-btn" id="exportBackupBtn" type="button">Export backup</button>
-          <button class="mini-btn" id="importBackupBtn" type="button">Import backup</button>
-          <button class="mini-btn" id="clearLinesBtn" type="button">Clear all</button>
+          <button class="mini-btn" id="exportBackupBtn" type="button">
+            <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>Export backup
+          </button>
+          <button class="mini-btn" id="importBackupBtn" type="button">
+            <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>Import backup
+          </button>
+          <button class="mini-btn text-danger" id="clearLinesBtn" type="button">
+            <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>Clear all
+          </button>
         </div>
         <div class="spacer"></div>
         <span class="sync-state" id="syncState">Loading shared sheet...</span>
@@ -149,6 +158,7 @@
         <button class="tab-btn active" data-view="editor" type="button">Editor</button>
         <button class="tab-btn" data-view="daily" type="button">Daily view</button>
         <button class="tab-btn" data-view="weekly" type="button">Weekly view</button>
+        <button class="tab-btn" data-view="monthly" type="button">Monthly view</button>
       </div>
 
       <div class="view-panel active" id="editorView">
@@ -172,9 +182,15 @@
 
       <div class="view-panel" id="dailyView">
         <div class="history-tools">
-          <button class="mini-btn" id="dailyRefreshBtn" type="button">Refresh</button>
-          <button class="mini-btn" id="dailyOpenBtn" type="button">Open current day</button>
-          <button class="mini-btn accent" id="dailyPrintBtn" type="button">Print selected day</button>
+          <button class="mini-btn" id="dailyRefreshBtn" type="button">
+            <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path></svg>Refresh
+          </button>
+          <button class="mini-btn" id="dailyOpenBtn" type="button">
+            <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>Open current day
+          </button>
+          <button class="mini-btn accent" id="dailyPrintBtn" type="button">
+            <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>Print selected day
+          </button>
           <div class="spacer"></div>
           <div class="shift-filter-group" id="dailyShiftFilterGroup">
             <button class="mini-btn active" data-shift="total" type="button">Total</button>
@@ -199,10 +215,18 @@
 
       <div class="view-panel" id="weeklyView">
         <div class="history-tools">
-          <button class="mini-btn" id="weeklyRefreshBtn" type="button">Refresh</button>
-          <button class="mini-btn" id="weeklyOpenBtn" type="button">Open this week</button>
-          <button class="mini-btn" id="weeklyCsvBtn" type="button">Export CSV</button>
-          <button class="mini-btn accent" id="weeklyPrintBtn" type="button">Print selected week</button>
+          <button class="mini-btn" id="weeklyRefreshBtn" type="button">
+            <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path></svg>Refresh
+          </button>
+          <button class="mini-btn" id="weeklyOpenBtn" type="button">
+            <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>Open this week
+          </button>
+          <button class="mini-btn" id="weeklyCsvBtn" type="button">
+            <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>Export CSV
+          </button>
+          <button class="mini-btn accent" id="weeklyPrintBtn" type="button">
+            <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>Print selected week
+          </button>
           <div class="spacer"></div>
           <div class="shift-filter-group" id="weeklyShiftFilterGroup">
             <button class="mini-btn active" data-shift="total" type="button">Total</button>
@@ -221,6 +245,42 @@
               <span class="section-note">Weekly analytics update automatically as each dated log syncs.</span>
             </div>
             <div class="history-list" id="weeklyHistory"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="view-panel" id="monthlyView">
+        <div class="history-tools">
+          <button class="mini-btn" id="monthlyRefreshBtn" type="button">
+            <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path></svg>Refresh
+          </button>
+          <button class="mini-btn" id="monthlyOpenBtn" type="button">
+            <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>Open this month
+          </button>
+          <button class="mini-btn" id="monthlyCsvBtn" type="button">
+            <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>Export CSV
+          </button>
+          <button class="mini-btn accent" id="monthlyPrintBtn" type="button">
+            <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>Print selected month
+          </button>
+          <div class="spacer"></div>
+          <div class="shift-filter-group" id="monthlyShiftFilterGroup">
+            <button class="mini-btn active" data-shift="total" type="button">Total</button>
+            <button class="mini-btn" data-shift="A" type="button">Shift A</button>
+            <button class="mini-btn" data-shift="B" type="button">Shift B</button>
+          </div>
+        </div>
+        <div class="report-scroll">
+          <div class="report-surface" id="monthlyReport"></div>
+          <div class="history-section no-print">
+            <div class="section-heading">
+              <div>
+                <span class="eyebrow">Archive</span>
+                <h3>Saved production months</h3>
+              </div>
+              <span class="section-note">Monthly analytics update automatically as each dated log syncs.</span>
+            </div>
+            <div class="history-list" id="monthlyHistory"></div>
           </div>
         </div>
       </div>

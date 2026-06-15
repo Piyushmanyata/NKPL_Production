@@ -247,9 +247,11 @@
     var historySheets = [];
     var selectedDailyDate = "";
     var selectedWeekStart = "";
+    var selectedMonthStart = "";
     var activeShiftFilter = "A";
     var selectedDailyShift = "total";
     var selectedWeeklyShift = "total";
+    var selectedMonthlyShift = "total";
 
     var FIELDS = [
       { f: "cycleTime", label: "Cycle s" },
@@ -765,6 +767,7 @@
         lines = normalizeLines(latest.lines);
         selectedDailyDate = latest.date;
         selectedWeekStart = weekStart(latest.date);
+        selectedMonthStart = Analytics.monthStart(latest.date);
         setView("editor");
         render();
       }
@@ -843,34 +846,34 @@
       report.innerHTML = Analytics.reportHtml(Analytics.summarizeSheet(sheetForDate(selectedDailyDate), selectedDailyShift), { scope: "day" });
     }
 
-    window.weeklyCharts = [];
+    window.activeCharts = { weekly: [], monthly: [] };
 
-    function destroyWeeklyCharts() {
-      if (window.weeklyCharts && window.weeklyCharts.length) {
-        window.weeklyCharts.forEach(function (chart) {
+    function destroyCharts(scope) {
+      if (window.activeCharts[scope] && window.activeCharts[scope].length) {
+        window.activeCharts[scope].forEach(function (chart) {
           try { chart.destroy(); } catch (e) {}
         });
       }
-      window.weeklyCharts = [];
+      window.activeCharts[scope] = [];
     }
 
-    function initWeeklyCharts(summary) {
+    function initCharts(scope, summary) {
       if (typeof Chart === "undefined") {
-        setSync("Weekly report ready · charts still loading", "warn");
+        setSync(scope.charAt(0).toUpperCase() + scope.slice(1) + " report ready · charts still loading", "warn");
         return;
       }
       Chart.defaults.responsive = true;
       Chart.defaults.maintainAspectRatio = false;
       Chart.defaults.devicePixelRatio = Math.min(window.devicePixelRatio || 1, 2);
       var palette = [
-        '#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
+        '#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
         '#06b6d4', '#ec4899', '#14b8a6', '#f43f5e', '#64748b',
         '#84cc16', '#0ea5e9', '#d946ef', '#f97316', '#22c55e',
         '#e11d48', '#7c3aed', '#0891b2', '#65a30d', '#ca8a04'
       ];
 
       // 1. Line Chart (Daily production trend)
-      var ctxLine = document.getElementById("weeklyDailyTrendChart");
+      var ctxLine = document.getElementById(scope + "DailyTrendChart");
       if (ctxLine && summary.days && summary.days.length) {
         var labels = summary.days.map(function (d) { return Analytics.formatDate(d.date); });
         var data = summary.days.map(function (d) { return d.actualKg || 0; });
@@ -881,15 +884,15 @@
             datasets: [{
               label: 'Production (kg)',
               data: data,
-              borderColor: '#4f46e5',
-              backgroundColor: 'rgba(79, 70, 229, 0.06)',
+              borderColor: '#6366f1',
+              backgroundColor: 'rgba(99, 102, 241, 0.05)',
               borderWidth: 2.5,
               fill: true,
               tension: 0.35,
               pointRadius: 4,
               pointHoverRadius: 6,
-              pointBackgroundColor: '#4f46e5',
-              pointBorderColor: '#fff',
+              pointBackgroundColor: '#6366f1',
+              pointBorderColor: '#09090b',
               pointBorderWidth: 1.5
             }]
           },
@@ -900,9 +903,11 @@
               legend: { display: false },
               tooltip: {
                 padding: 10,
-                backgroundColor: 'rgba(15, 23, 42, 0.9)',
-                titleFont: { size: 11, weight: 'bold' },
-                bodyFont: { size: 11 },
+                backgroundColor: 'rgba(9, 9, 11, 0.95)',
+                titleFont: { size: 11, weight: 'bold', family: 'var(--font-sans)' },
+                bodyFont: { size: 11, family: 'var(--font-sans)' },
+                borderColor: 'rgba(255,255,255,0.08)',
+                borderWidth: 1,
                 callbacks: {
                   label: function(context) {
                     return ' Production: ' + context.parsed.y.toLocaleString() + ' kg';
@@ -913,21 +918,21 @@
             scales: {
               y: {
                 beginAtZero: true,
-                grid: { color: 'rgba(226, 232, 240, 0.8)', borderDash: [4, 4] },
-                ticks: { font: { size: 10 }, color: '#64748b' }
+                grid: { color: 'rgba(255, 255, 255, 0.04)', borderDash: [4, 4] },
+                ticks: { font: { size: 10, family: 'var(--font-sans)' }, color: '#a1a1aa' }
               },
               x: {
                 grid: { display: false },
-                ticks: { font: { size: 10 }, color: '#64748b' }
+                ticks: { font: { size: 10, family: 'var(--font-sans)' }, color: '#a1a1aa' }
               }
             }
           }
         });
-        window.weeklyCharts.push(lineChart);
+        window.activeCharts[scope].push(lineChart);
       }
 
-      // 2. Pie Chart (Product Mix)
-      var ctxPie = document.getElementById("weeklyProductMixChart");
+      // 2. Product Mix Chart
+      var ctxPie = document.getElementById(scope + "ProductMixChart");
       if (ctxPie && summary.items && summary.items.length) {
         var pieItems = summary.items;
         var labels = pieItems.map(function (it) { return it.label; });
@@ -949,12 +954,12 @@
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-              legend: {
-                display: false
-              },
+              legend: { display: false },
               tooltip: {
                 padding: 10,
-                backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                backgroundColor: 'rgba(9, 9, 11, 0.95)',
+                borderColor: 'rgba(255,255,255,0.08)',
+                borderWidth: 1,
                 callbacks: {
                   label: function(context) {
                     var val = context.parsed.x;
@@ -962,27 +967,27 @@
                     var pct = total > 0 ? ((val / total) * 100).toFixed(1) : 0;
                     return ' ' + context.label + ': ' + val.toLocaleString() + ' kg (' + pct + '%)';
                   }
-                }
+                 }
               }
             },
             scales: {
               x: {
                 beginAtZero: true,
-                grid: { color: 'rgba(226, 232, 240, 0.8)', borderDash: [4, 4] },
-                ticks: { font: { size: 10 }, color: '#64748b' }
+                grid: { color: 'rgba(255, 255, 255, 0.04)', borderDash: [4, 4] },
+                ticks: { font: { size: 10, family: 'var(--font-sans)' }, color: '#a1a1aa' }
               },
               y: {
                 grid: { display: false },
-                ticks: { font: { size: 9 }, color: '#475569', autoSkip: false }
+                ticks: { font: { size: 9, family: 'var(--font-sans)' }, color: '#e4e4e7', autoSkip: false }
               }
             }
           }
         });
-        window.weeklyCharts.push(pieChart);
+        window.activeCharts[scope].push(pieChart);
       }
 
       // 3. Bar Chart (Machine Performance)
-      var ctxBar = document.getElementById("weeklyMachinePerformanceChart");
+      var ctxBar = document.getElementById(scope + "MachinePerformanceChart");
       if (ctxBar && summary.machines && summary.machines.length) {
         var labels = summary.machines.map(function (m) { return m.label; });
         var data = summary.machines.map(function (m) { return m.actualKg || 0; });
@@ -994,7 +999,7 @@
               label: 'Production (kg)',
               data: data,
               backgroundColor: 'rgba(99, 102, 241, 0.85)',
-              hoverBackgroundColor: '#4f46e5',
+              hoverBackgroundColor: '#6366f1',
               borderRadius: 6,
               borderWidth: 0
             }]
@@ -1006,27 +1011,29 @@
               legend: { display: false },
               tooltip: {
                 padding: 10,
-                backgroundColor: 'rgba(15, 23, 42, 0.9)'
+                backgroundColor: 'rgba(9, 9, 11, 0.95)',
+                borderColor: 'rgba(255,255,255,0.08)',
+                borderWidth: 1
               }
             },
             scales: {
               y: {
                 beginAtZero: true,
-                grid: { color: 'rgba(226, 232, 240, 0.8)', borderDash: [4, 4] },
-                ticks: { font: { size: 10 }, color: '#64748b' }
+                grid: { color: 'rgba(255, 255, 255, 0.04)', borderDash: [4, 4] },
+                ticks: { font: { size: 10, family: 'var(--font-sans)' }, color: '#a1a1aa' }
               },
               x: {
                 grid: { display: false },
-                ticks: { font: { size: 10 }, color: '#64748b' }
+                ticks: { font: { size: 10, family: 'var(--font-sans)' }, color: '#a1a1aa' }
               }
             }
           }
         });
-        window.weeklyCharts.push(barChart);
+        window.activeCharts[scope].push(barChart);
       }
 
       // 4. Runtime chart (machine running hours)
-      var ctxRuntime = document.getElementById("weeklyMachineRuntimeChart");
+      var ctxRuntime = document.getElementById(scope + "MachineRuntimeChart");
       if (ctxRuntime && summary.machines && summary.machines.length) {
         var runtimeLabels = summary.machines.map(function (m) { return m.label; });
         var runtimeData = summary.machines.map(function (m) { return m.runHours || 0; });
@@ -1038,7 +1045,7 @@
               label: 'Runtime (hours)',
               data: runtimeData,
               backgroundColor: 'rgba(20, 184, 166, 0.82)',
-              hoverBackgroundColor: '#0f766e',
+              hoverBackgroundColor: '#14b8a6',
               borderRadius: 6,
               borderWidth: 0
             }]
@@ -1050,7 +1057,9 @@
               legend: { display: false },
               tooltip: {
                 padding: 10,
-                backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                backgroundColor: 'rgba(9, 9, 11, 0.95)',
+                borderColor: 'rgba(255,255,255,0.08)',
+                borderWidth: 1,
                 callbacks: {
                   label: function(context) {
                     return ' Runtime: ' + context.parsed.y.toLocaleString() + ' hr';
@@ -1061,21 +1070,21 @@
             scales: {
               y: {
                 beginAtZero: true,
-                grid: { color: 'rgba(226, 232, 240, 0.8)', borderDash: [4, 4] },
-                ticks: { font: { size: 10 }, color: '#64748b' }
+                grid: { color: 'rgba(255, 255, 255, 0.04)', borderDash: [4, 4] },
+                ticks: { font: { size: 10, family: 'var(--font-sans)' }, color: '#a1a1aa' }
               },
               x: {
                 grid: { display: false },
-                ticks: { font: { size: 10 }, color: '#64748b' }
+                ticks: { font: { size: 10, family: 'var(--font-sans)' }, color: '#a1a1aa' }
               }
             }
           }
         });
-        window.weeklyCharts.push(runtimeChart);
+        window.activeCharts[scope].push(runtimeChart);
       }
 
       // 5. Machine target-attainment chart
-      var ctxEfficiency = document.getElementById("weeklyMachineEfficiencyChart");
+      var ctxEfficiency = document.getElementById(scope + "MachineEfficiencyChart");
       if (ctxEfficiency && summary.machines && summary.machines.length) {
         var efficiencyLabels = summary.machines.map(function (m) { return m.label; });
         var efficiencyData = summary.machines.map(function (m) { return m.efficiency || 0; });
@@ -1087,7 +1096,7 @@
               label: 'Target attainment (%)',
               data: efficiencyData,
               backgroundColor: efficiencyData.map(function (value) {
-                return value >= 95 ? 'rgba(16, 185, 129, 0.85)' : value >= 85 ? 'rgba(245, 158, 11, 0.85)' : 'rgba(239, 68, 68, 0.85)';
+                return value >= 95 ? 'rgba(16, 185, 129, 0.82)' : value >= 85 ? 'rgba(245, 158, 11, 0.82)' : 'rgba(239, 68, 68, 0.82)';
               }),
               borderRadius: 6,
               borderWidth: 0
@@ -1100,7 +1109,9 @@
               legend: { display: false },
               tooltip: {
                 padding: 10,
-                backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                backgroundColor: 'rgba(9, 9, 11, 0.95)',
+                borderColor: 'rgba(255,255,255,0.08)',
+                borderWidth: 1,
                 callbacks: {
                   label: function(context) {
                     return ' Attainment: ' + context.parsed.y.toFixed(1) + '%';
@@ -1112,25 +1123,25 @@
               y: {
                 beginAtZero: true,
                 suggestedMax: Math.max(110, Math.ceil(Math.max.apply(null, efficiencyData) / 10) * 10),
-                grid: { color: 'rgba(226, 232, 240, 0.8)', borderDash: [4, 4] },
+                grid: { color: 'rgba(255, 255, 255, 0.04)', borderDash: [4, 4] },
                 ticks: {
-                  font: { size: 10 },
-                  color: '#64748b',
+                  font: { size: 10, family: 'var(--font-sans)' },
+                  color: '#a1a1aa',
                   callback: function(value) { return value + '%'; }
                 }
               },
               x: {
                 grid: { display: false },
-                ticks: { font: { size: 10 }, color: '#64748b' }
+                ticks: { font: { size: 10, family: 'var(--font-sans)' }, color: '#a1a1aa' }
               }
             }
           }
         });
-        window.weeklyCharts.push(efficiencyChart);
+        window.activeCharts[scope].push(efficiencyChart);
       }
 
       // 6. Stacked machine/product output chart
-      var ctxMachineProduct = document.getElementById("weeklyMachineProductChart");
+      var ctxMachineProduct = document.getElementById(scope + "MachineProductChart");
       if (ctxMachineProduct && summary.machineProducts && summary.machineProducts.length) {
         var machineLabels = summary.machines.map(function (m) { return m.label; });
         var itemTotals = {};
@@ -1165,14 +1176,16 @@
                 position: 'bottom',
                 labels: {
                   boxWidth: 10,
-                  font: { size: 9, weight: '600' },
-                  color: '#475569',
+                  font: { size: 9, weight: '600', family: 'var(--font-sans)' },
+                  color: '#e4e4e7',
                   padding: 10
                 }
               },
               tooltip: {
                 padding: 10,
-                backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                backgroundColor: 'rgba(9, 9, 11, 0.95)',
+                borderColor: 'rgba(255,255,255,0.08)',
+                borderWidth: 1,
                 callbacks: {
                   label: function(context) {
                     return ' ' + context.dataset.label + ': ' + context.parsed.y.toLocaleString() + ' kg';
@@ -1184,18 +1197,18 @@
               x: {
                 stacked: true,
                 grid: { display: false },
-                ticks: { font: { size: 10 }, color: '#64748b' }
+                ticks: { font: { size: 10, family: 'var(--font-sans)' }, color: '#a1a1aa' }
               },
               y: {
                 stacked: true,
                 beginAtZero: true,
-                grid: { color: 'rgba(226, 232, 240, 0.8)', borderDash: [4, 4] },
-                ticks: { font: { size: 10 }, color: '#64748b' }
+                grid: { color: 'rgba(255, 255, 255, 0.04)', borderDash: [4, 4] },
+                ticks: { font: { size: 10, family: 'var(--font-sans)' }, color: '#a1a1aa' }
               }
             }
           }
         });
-        window.weeklyCharts.push(machineProductChart);
+        window.activeCharts[scope].push(machineProductChart);
       }
     }
 
@@ -1204,38 +1217,50 @@
       if (!report) return;
       selectedWeekStart = selectedWeekStart || weekStart(activeDate || dateEl.value);
       var summary = Analytics.summarizeWeek(sheetsWithCurrent(), selectedWeekStart, selectedWeeklyShift);
-      destroyWeeklyCharts();
+      destroyCharts("weekly");
       report.innerHTML = Analytics.reportHtml(summary, { scope: "week" });
       if (summary && summary.entries) {
-        initWeeklyCharts(summary);
+        initCharts("weekly", summary);
       }
     }
 
-    function selectedWeekSheets() {
-      var start = selectedWeekStart || weekStart(activeDate || dateEl.value);
+    function renderMonthlyReport() {
+      var report = document.getElementById("monthlyReport");
+      if (!report) return;
+      selectedMonthStart = selectedMonthStart || Analytics.monthStart(activeDate || dateEl.value);
+      var summary = Analytics.summarizeMonth(sheetsWithCurrent(), selectedMonthStart, selectedMonthlyShift);
+      destroyCharts("monthly");
+      report.innerHTML = Analytics.reportHtml(summary, { scope: "month" });
+      if (summary && summary.entries) {
+        initCharts("monthly", summary);
+      }
+    }
+
+    function selectedMonthSheets() {
+      var start = selectedMonthStart || Analytics.monthStart(activeDate || dateEl.value);
       return sheetsWithCurrent().filter(function (sheet) {
-        return sheet && sheet.date && weekStart(sheet.date) === start && sheetHasContent(sheet.lines);
+        return sheet && sheet.date && Analytics.monthStart(sheet.date) === start && sheetHasContent(sheet.lines);
       }).sort(function (a, b) { return a.date.localeCompare(b.date); });
     }
 
-    function exportWeeklyCsv() {
-      selectedWeekStart = selectedWeekStart || weekStart(activeDate || dateEl.value);
+    function exportMonthlyCsv() {
+      selectedMonthStart = selectedMonthStart || Analytics.monthStart(activeDate || dateEl.value);
       var headers = [
-        "Week start", "Week end", "Date", "Shift", "Machine", "Item",
+        "Month start", "Month end", "Date", "Shift", "Machine", "Item",
         "Cycle time", "Cavity", "Hours", "Grammage", "Kg per bag",
         "Target bags", "Target kg", "Target pieces",
         "Actual bags", "Actual kg", "Actual pieces",
         "Variance bags", "Variance kg", "Efficiency %", "Status", "Remark"
       ];
-      var summary = Analytics.summarizeWeek(sheetsWithCurrent(), selectedWeekStart, selectedWeeklyShift);
+      var summary = Analytics.summarizeMonth(sheetsWithCurrent(), selectedMonthStart, selectedMonthlyShift);
       var rows = [];
-      selectedWeekSheets().forEach(function (sheet) {
+      selectedMonthSheets().forEach(function (sheet) {
         sheet.lines.forEach(function (line) {
           var shift = line.shift || "A";
-          if (!lineHasContent(line) || (selectedWeeklyShift !== "total" && shift !== selectedWeeklyShift)) return;
+          if (!lineHasContent(line) || (selectedMonthlyShift !== "total" && shift !== selectedMonthlyShift)) return;
           var entry = Analytics.computeLine(Object.assign({}, line, { date: sheet.date }), tol());
           rows.push([
-            selectedWeekStart, summary.end, sheet.date, shift, entry.machine, entry.item,
+            selectedMonthStart, summary.end, sheet.date, shift, entry.machine, entry.item,
             entry.cycleTime, entry.cavity, entry.hours, entry.grammage, entry.kgPerBag,
             entry.targetBags == null ? "" : entry.targetBags.toFixed(2),
             entry.targetKg == null ? "" : entry.targetKg.toFixed(2),
@@ -1252,12 +1277,12 @@
         });
       });
       if (!rows.length) {
-        setSync("No weekly rows to export", "warn");
+        setSync("No monthly rows to export", "warn");
         return;
       }
-      var suffix = selectedWeeklyShift === "total" ? "all-shifts" : "shift-" + selectedWeeklyShift;
-      downloadCsv("nkpl-weekly-production-" + selectedWeekStart + "-" + suffix + ".csv", headers, rows);
-      setSync("Weekly CSV exported", "ok");
+      var suffix = selectedMonthlyShift === "total" ? "all-shifts" : "shift-" + selectedMonthlyShift;
+      downloadCsv("nkpl-monthly-production-" + selectedMonthStart + "-" + suffix + ".csv", headers, rows);
+      setSync("Monthly CSV exported", "ok");
     }
 
     function refreshHistoryFromLocal() {
@@ -1267,9 +1292,11 @@
     function renderHistory(sheets) {
       var daily = document.getElementById("dailyHistory");
       var weekly = document.getElementById("weeklyHistory");
-      if (!daily || !weekly) return;
+      var monthly = document.getElementById("monthlyHistory");
+      if (!daily || !weekly || !monthly) return;
       daily.innerHTML = "";
       weekly.innerHTML = "";
+      monthly.innerHTML = "";
       historySheets = (sheets || []).filter(function (sheet) {
         return sheet && sheet.date && Array.isArray(sheet.lines) && sheetHasContent(sheet.lines);
       }).sort(function (a, b) { return b.date.localeCompare(a.date); });
@@ -1277,6 +1304,7 @@
         selectedDailyDate = activeDate || (historySheets[0] && historySheets[0].date) || "";
       }
       if (!selectedWeekStart) selectedWeekStart = weekStart(activeDate || dateEl.value);
+      if (!selectedMonthStart) selectedMonthStart = Analytics.monthStart(activeDate || dateEl.value);
 
       var filteredDailySheets = historySheets.filter(function (sheet) {
         return sheet.lines.some(function (line) {
@@ -1325,20 +1353,48 @@
         });
         weekly.appendChild(card);
       });
+
+      var filteredMonthlySheets = historySheets.filter(function (sheet) {
+        return sheet.lines.some(function (line) {
+          return lineHasContent(line) && (selectedMonthlyShift === "total" || (line.shift || "A") === selectedMonthlyShift);
+        });
+      });
+
+      var months = Array.from(new Set(filteredMonthlySheets.map(function (sheet) { return Analytics.monthStart(sheet.date); }))).sort(function (a, b) { return b.localeCompare(a); });
+      if (!months.includes(selectedMonthStart)) selectedMonthStart = Analytics.monthStart(activeDate || dateEl.value);
+      months.forEach(function (mo) {
+        var summary = Analytics.summarizeMonth(filteredMonthlySheets, mo, selectedMonthlyShift);
+        if (!summary.entries) return;
+        var card = document.createElement("div");
+        card.className = "history-card" + (mo === selectedMonthStart ? " active" : "");
+        card.innerHTML = '<h3><span>' + summary.subtitle + '</span><span>' + fmt(summary.actualKg, 1) + ' kg</span></h3>' +
+          '<div class="meta">Days: ' + summary.dayCount + ' · Lines: ' + summary.entries + ' · Run time: ' + fmt(summary.runHours, 1) + ' hr · Actual: ' + fmt(summary.actualBags, 0) + ' bags · Efficiency: ' + (summary.efficiency == null ? "-" : fmt(summary.efficiency, 1) + "%") + '</div>' +
+          '<div class="history-actions"><button class="mini-btn" data-report type="button">View month report</button></div>';
+        card.querySelector("[data-report]").addEventListener("click", function () {
+          selectedMonthStart = mo;
+          renderHistory(historySheets);
+          setView("monthly");
+        });
+        monthly.appendChild(card);
+      });
+
       if (!daily.children.length) daily.innerHTML = '<div class="history-card"><h3>No production days yet</h3><div class="meta">Dated logs appear automatically after production entries are added.</div></div>';
       if (!weekly.children.length) weekly.innerHTML = '<div class="history-card"><h3>No weekly analytics yet</h3><div class="meta">Weekly totals appear automatically as dated entries are logged.</div></div>';
+      if (!monthly.children.length) monthly.innerHTML = '<div class="history-card"><h3>No monthly analytics yet</h3><div class="meta">Monthly totals appear automatically as dated entries are logged.</div></div>';
       renderDailyReport();
       renderWeeklyReport();
+      renderMonthlyReport();
     }
 
     function readyChartsForPrint(scope) {
-      if (scope !== "weekly" || !window.weeklyCharts || !window.weeklyCharts.length) {
+      var charts = window.activeCharts[scope];
+      if (!charts || !charts.length) {
         return Promise.resolve();
       }
       return new Promise(function (resolve) {
         requestAnimationFrame(function () {
           requestAnimationFrame(function () {
-            window.weeklyCharts.forEach(function (chart) {
+            charts.forEach(function (chart) {
               try {
                 chart.resize();
                 chart.update("none");
@@ -1351,12 +1407,12 @@
     }
 
     function printReport(scope) {
-      var className = scope === "weekly" ? "print-weekly" : "print-daily";
+      var className = scope === "weekly" ? "print-weekly" : scope === "monthly" ? "print-monthly" : "print-daily";
       var previousTitle = document.title;
-      var titlePrefix = scope === "weekly" ? "NKPL Weekly Production Report" : "NKPL Daily Production Report";
-      setView(scope === "weekly" ? "weekly" : "daily");
-      document.title = titlePrefix + " - " + (scope === "weekly" ? selectedWeekStart : selectedDailyDate || activeDate || "");
-      document.body.classList.remove("print-daily", "print-weekly");
+      var titlePrefix = scope === "weekly" ? "NKPL Weekly Production Report" : scope === "monthly" ? "NKPL Monthly Production Report" : "NKPL Daily Production Report";
+      setView(scope === "weekly" ? "weekly" : scope === "monthly" ? "monthly" : "daily");
+      document.title = titlePrefix + " - " + (scope === "weekly" ? selectedWeekStart : scope === "monthly" ? selectedMonthStart : selectedDailyDate || activeDate || "");
+      document.body.classList.remove("print-daily", "print-weekly", "print-monthly");
       document.body.classList.add(className);
       var cleanup = function () {
         document.body.classList.remove("print-daily", "print-weekly");
@@ -1370,7 +1426,7 @@
     }
 
     function setView(view) {
-      ["editor", "daily", "weekly"].forEach(function (name) {
+      ["editor", "daily", "weekly", "monthly"].forEach(function (name) {
         var panel = document.getElementById(name + "View");
         var btn = document.querySelector('.tab-btn[data-view="' + name + '"]');
         if (panel) panel.classList.toggle("active", name === view);
@@ -1378,6 +1434,7 @@
       });
       if (view === "daily") renderDailyReport();
       if (view === "weekly") renderWeeklyReport();
+      if (view === "monthly") renderMonthlyReport();
     }
 
     function yesterdayISO() {
@@ -1399,6 +1456,7 @@
       dateEl.value = nextDate;
       selectedDailyDate = nextDate;
       selectedWeekStart = weekStart(nextDate);
+      selectedMonthStart = Analytics.monthStart(nextDate);
       try { localStorage.setItem(LS_DATE, nextDate); } catch (e) {}
       await loadRemote(nextDate);
       await refreshHistory();
@@ -1436,7 +1494,9 @@
     });
     document.getElementById("dailyPrintBtn").addEventListener("click", function () { printReport("daily"); });
     document.getElementById("weeklyPrintBtn").addEventListener("click", function () { printReport("weekly"); });
+    document.getElementById("monthlyPrintBtn").addEventListener("click", function () { printReport("monthly"); });
     document.getElementById("weeklyCsvBtn").addEventListener("click", exportWeeklyCsv);
+    document.getElementById("monthlyCsvBtn").addEventListener("click", exportMonthlyCsv);
     document.getElementById("exportBackupBtn").addEventListener("click", exportBackup);
     document.getElementById("importBackupBtn").addEventListener("click", openImportPicker);
     document.getElementById("backupFileInput").addEventListener("change", function () {
@@ -1448,8 +1508,10 @@
     });
     document.getElementById("dailyRefreshBtn").addEventListener("click", refreshHistory);
     document.getElementById("weeklyRefreshBtn").addEventListener("click", refreshHistory);
+    document.getElementById("monthlyRefreshBtn").addEventListener("click", refreshHistory);
     document.getElementById("dailyOpenBtn").addEventListener("click", function(){ changeLoggingDate(selectedDailyDate || activeDate); });
     document.getElementById("weeklyOpenBtn").addEventListener("click", function(){ selectedWeekStart = weekStart(activeDate); renderWeeklyReport(); });
+    document.getElementById("monthlyOpenBtn").addEventListener("click", function(){ selectedMonthStart = Analytics.monthStart(activeDate); renderMonthlyReport(); });
     document.querySelectorAll(".tab-btn").forEach(function (btn) {
       btn.addEventListener("click", function () { setView(btn.dataset.view); });
     });
@@ -1502,10 +1564,27 @@
       });
     }
 
+    // Monthly shift filter buttons
+    var monthlyShiftFilterGroup = document.getElementById("monthlyShiftFilterGroup");
+    if (monthlyShiftFilterGroup) {
+      monthlyShiftFilterGroup.querySelectorAll("button").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          monthlyShiftFilterGroup.querySelectorAll("button").forEach(function (b) {
+            b.classList.remove("active");
+          });
+          btn.classList.add("active");
+          selectedMonthlyShift = btn.dataset.shift;
+          renderMonthlyReport();
+          refreshHistory();
+        });
+      });
+    }
+
     dateEl.value = yesterdayISO();
     activeDate = dateEl.value;
     selectedDailyDate = activeDate;
     selectedWeekStart = weekStart(activeDate);
+    selectedMonthStart = Analytics.monthStart(activeDate);
     loadLocal(activeDate);
     render();
     loadRemote(activeDate);

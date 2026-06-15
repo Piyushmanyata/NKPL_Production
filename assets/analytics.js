@@ -64,6 +64,11 @@
     return localDateISO(day);
   }
 
+  function monthStart(date) {
+    if (!date) return "";
+    return date.slice(0, 7) + "-01";
+  }
+
   function formatDate(date) {
     if (!date) return "-";
     return new Date(date + "T00:00:00").toLocaleDateString("en-GB", {
@@ -392,6 +397,58 @@
     return totals;
   }
 
+  function summarizeMonth(sheets, start, shiftFilter) {
+    var monthSheets = (Array.isArray(sheets) ? sheets : []).filter(function (sheet) {
+      return sheet && sheet.date && monthStart(sheet.date) === start && Array.isArray(sheet.lines) && sheet.lines.some(lineHasContent);
+    });
+    var lines = [];
+    var shiftALines = [];
+    var shiftBLines = [];
+    monthSheets.forEach(function (sheet) {
+      sheet.lines.forEach(function (line) {
+        if (lineHasContent(line)) {
+          var lineWithDate = Object.assign({}, line, { date: sheet.date });
+          var shift = line.shift || "A";
+          if (shift === "A") {
+            shiftALines.push(lineWithDate);
+          } else if (shift === "B") {
+            shiftBLines.push(lineWithDate);
+          }
+          if (!shiftFilter || shiftFilter === "total" || shift === shiftFilter) {
+            lines.push(lineWithDate);
+          }
+        }
+      });
+    });
+    var totals = summarizeLines(lines, 5);
+    totals.shiftA = summarizeLines(shiftALines, 5);
+    totals.shiftB = summarizeLines(shiftBLines, 5);
+    
+    var parts = start.split("-");
+    var year = parseInt(parts[0], 10);
+    var month = parseInt(parts[1], 10);
+    var endDate = new Date(year, month, 0);
+    totals.start = start;
+    totals.end = localDateISO(endDate);
+    totals.date = start;
+    totals.shiftLabel = shiftLabel(shiftFilter);
+    totals.title = "Monthly production report";
+    
+    var dateObj = new Date(start + "T12:00:00");
+    totals.subtitle = dateObj.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+    
+    var activeMonthSheets = monthSheets.filter(function (sheet) {
+      return sheet.lines.some(function (l) {
+        return lineHasContent(l) && (!shiftFilter || shiftFilter === "total" || (l.shift || "A") === shiftFilter);
+      });
+    });
+    totals.dayCount = activeMonthSheets.length;
+    totals.days = activeMonthSheets.map(function (sheet) {
+      return summarizeSheet(sheet, shiftFilter);
+    }).sort(function (a, b) { return a.date.localeCompare(b.date); });
+    return totals;
+  }
+
   function signed(value, digits) {
     if (value == null || !Number.isFinite(value)) return "-";
     return (value > 0 ? "+" : "") + fmt(value, digits);
@@ -516,11 +573,11 @@
     }
     var scope = options.scope || "day";
     var heading = '<div class="report-hero">' +
-      '<div><span class="eyebrow">' + esc(scope === "week" ? "Weekly intelligence" : "Daily intelligence") + '</span>' +
+      '<div><span class="eyebrow">' + esc(scope === "week" ? "Weekly intelligence" : scope === "month" ? "Monthly intelligence" : "Daily intelligence") + '</span>' +
       '<h2>' + esc(summary.title) + '</h2><p>' + esc(summary.subtitle) + '</p></div>' +
       '<div class="report-hero-stat"><span>' + esc(summary.shiftLabel || "All shifts") + '</span><strong>' + esc(fmt(summary.actualKg, 1)) + ' kg</strong><small>' + esc(fmt(summary.actualBags, 0)) + ' bags</small></div>' +
       '</div>';
-    var daySection = scope === "week"
+    var daySection = (scope === "week" || scope === "month")
       ? '<section class="report-block trend-section"><div class="section-heading"><div><span class="eyebrow">Daily trend</span><h3>Production by date</h3></div></div>' +
         table(["Date", "Entries", "Run hr", "Actual bags", "Actual kg", "Efficiency", "Follow-up"], dayRows(summary), "No dated entries.") +
         "</section>"
@@ -549,39 +606,40 @@
     var shiftSection = "";
     var insightSection = "";
     var machineProductSection = "";
-    if (scope === "week") {
+    if (scope === "week" || scope === "month") {
+      var scopeLabel = scope === "week" ? "Weekly" : "Monthly";
       chartSection = '<section class="report-block charts-section">' +
-        '<div class="section-heading"><div><span class="eyebrow">Visual Analytics</span><h3>Weekly Charts & Performance</h3></div></div>' +
+        '<div class="section-heading"><div><span class="eyebrow">Visual Analytics</span>   <h3>' + scopeLabel + ' Charts & Performance</h3></div></div>' +
         '<div class="charts-grid">' +
         '  <div class="chart-container line-chart-container">' +
         '    <h4>Daily Production Trend (kg)</h4>' +
-        '    <div class="canvas-wrapper"><canvas id="weeklyDailyTrendChart"></canvas></div>' +
+        '    <div class="canvas-wrapper"><canvas id="' + scope + 'DailyTrendChart"></canvas></div>' +
         '  </div>' +
         '  <div class="chart-container line-chart-container product-detail-chart">' +
         '    <h4>Product Output Detail (kg)</h4>' +
-        '    <div class="canvas-wrapper detail"><canvas id="weeklyProductMixChart"></canvas></div>' +
+        '    <div class="canvas-wrapper detail"><canvas id="' + scope + 'ProductMixChart"></canvas></div>' +
         '  </div>' +
         '  <div class="chart-container bar-chart-container">' +
         '    <h4>Machine Performance (kg)</h4>' +
-        '    <div class="canvas-wrapper"><canvas id="weeklyMachinePerformanceChart"></canvas></div>' +
+        '    <div class="canvas-wrapper"><canvas id="' + scope + 'MachinePerformanceChart"></canvas></div>' +
         '  </div>' +
         '  <div class="chart-container bar-chart-container">' +
         '    <h4>Machine Runtime (hours)</h4>' +
-        '    <div class="canvas-wrapper"><canvas id="weeklyMachineRuntimeChart"></canvas></div>' +
+        '    <div class="canvas-wrapper"><canvas id="' + scope + 'MachineRuntimeChart"></canvas></div>' +
         '  </div>' +
         '  <div class="chart-container bar-chart-container">' +
         '    <h4>Machine Target Attainment (%)</h4>' +
-        '    <div class="canvas-wrapper"><canvas id="weeklyMachineEfficiencyChart"></canvas></div>' +
+        '    <div class="canvas-wrapper"><canvas id="' + scope + 'MachineEfficiencyChart"></canvas></div>' +
         '  </div>' +
         '  <div class="chart-container line-chart-container">' +
         '    <h4>Machine Product Mix (kg, all products)</h4>' +
-        '    <div class="canvas-wrapper extra-tall"><canvas id="weeklyMachineProductChart"></canvas></div>' +
+        '    <div class="canvas-wrapper extra-tall"><canvas id="' + scope + 'MachineProductChart"></canvas></div>' +
         '  </div>' +
         '</div>' +
         '</section>';
 
       insightSection = '<section class="report-block insights-section"><div class="section-heading"><div><span class="eyebrow">Machine diagnostics</span><h3>Why machines underperformed</h3></div><span class="section-note">Compared by output, runtime, kg/hr and target attainment</span></div>' +
-        '<div class="insight-grid">' + (insightCards(summary) || '<div class="report-empty">No machine gaps to explain this week.</div>') + '</div>' +
+        '<div class="insight-grid">' + (insightCards(summary) || '<div class="report-empty">No machine gaps to explain.</div>') + '</div>' +
         '</section>';
 
       machineProductSection = '<section class="report-block machine-product-section"><div class="section-heading"><div><span class="eyebrow">Machine x Product</span><h3>What each machine produced</h3></div><span class="section-note">' +
@@ -593,7 +651,7 @@
       var sb = summary.shiftB || blankSummary();
 
       shiftSection = '<section class="report-block shift-metrics-section">' +
-        '<div class="section-heading"><div><span class="eyebrow">Shift Performance</span><h3>Shift-wise Weekly Comparison</h3></div></div>' +
+        '<div class="section-heading"><div><span class="eyebrow">Shift Performance</span><h3>Shift-wise ' + scopeLabel + ' Comparison</h3></div></div>' +
         '<div class="shift-comparison-grid">' +
         '  <div class="shift-card shift-a-card">' +
         '    <div class="shift-card-header">' +
@@ -621,7 +679,7 @@
 
     var exceptionsHtml = "";
     var shortRunsHtml = "";
-    if (scope !== "week") {
+    if (scope !== "week" && scope !== "month") {
       exceptionsHtml = '<section class="report-block exceptions-section' + (summary.flagged === 0 ? ' empty-print' : '') + '"><div class="section-heading"><div><span class="eyebrow">Exceptions</span><h3>Follow-up list</h3></div><span class="section-note">' +
         esc(fmt(summary.flagged, 0)) + ' flagged line(s)</span></div>' +
         (issues || '<div class="report-empty">No under-target or over-target runs.</div>') +
@@ -662,6 +720,8 @@
     statusWord: statusWord,
     summarizeSheet: summarizeSheet,
     summarizeWeek: summarizeWeek,
+    monthStart: monthStart,
+    summarizeMonth: summarizeMonth,
     weekStart: weekStart
   };
 })();
