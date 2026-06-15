@@ -573,11 +573,11 @@
     }
     var scope = options.scope || "day";
     var heading = '<div class="report-hero">' +
-      '<div><span class="eyebrow">' + esc(scope === "week" ? "Weekly intelligence" : scope === "month" ? "Monthly intelligence" : "Daily intelligence") + '</span>' +
+      '<div><span class="eyebrow">' + esc(scope === "weekly" ? "Weekly intelligence" : scope === "monthly" ? "Monthly intelligence" : "Daily intelligence") + '</span>' +
       '<h2>' + esc(summary.title) + '</h2><p>' + esc(summary.subtitle) + '</p></div>' +
       '<div class="report-hero-stat"><span>' + esc(summary.shiftLabel || "All shifts") + '</span><strong>' + esc(fmt(summary.actualKg, 1)) + ' kg</strong><small>' + esc(fmt(summary.actualBags, 0)) + ' bags</small></div>' +
       '</div>';
-    var daySection = (scope === "week" || scope === "month")
+    var daySection = (scope === "weekly" || scope === "monthly")
       ? '<section class="report-block trend-section"><div class="section-heading"><div><span class="eyebrow">Daily trend</span><h3>Production by date</h3></div></div>' +
         table(["Date", "Entries", "Run hr", "Actual bags", "Actual kg", "Efficiency", "Follow-up"], dayRows(summary), "No dated entries.") +
         "</section>"
@@ -606,8 +606,8 @@
     var shiftSection = "";
     var insightSection = "";
     var machineProductSection = "";
-    if (scope === "week" || scope === "month") {
-      var scopeLabel = scope === "week" ? "Weekly" : "Monthly";
+    if (scope === "weekly" || scope === "monthly") {
+      var scopeLabel = scope === "weekly" ? "Weekly" : "Monthly";
       chartSection = '<section class="report-block charts-section">' +
         '<div class="section-heading"><div><span class="eyebrow">Visual Analytics</span>   <h3>' + scopeLabel + ' Charts & Performance</h3></div></div>' +
         '<div class="charts-grid">' +
@@ -679,7 +679,7 @@
 
     var exceptionsHtml = "";
     var shortRunsHtml = "";
-    if (scope !== "week" && scope !== "month") {
+    if (scope !== "weekly" && scope !== "monthly") {
       exceptionsHtml = '<section class="report-block exceptions-section' + (summary.flagged === 0 ? ' empty-print' : '') + '"><div class="section-heading"><div><span class="eyebrow">Exceptions</span><h3>Follow-up list</h3></div><span class="section-note">' +
         esc(fmt(summary.flagged, 0)) + ' flagged line(s)</span></div>' +
         (issues || '<div class="report-empty">No under-target or over-target runs.</div>') +

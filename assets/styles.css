@@ -412,7 +412,7 @@ input:focus, select:focus {
 .stat b {
   font-size: 15px;
   font-weight: 700;
-  color: #e4e4e7;
+  color: var(--ink);
   display: block;
   margin-top: 4px;
   font-family: var(--font-mono);
@@ -551,7 +551,7 @@ input:focus, select:focus {
 .check-head h2 {
   font-size: 15px;
   font-weight: 800;
-  color: #fff;
+  color: var(--ink);
   letter-spacing: -0.01em;
 }
 .check-head .ch-div {
@@ -852,10 +852,10 @@ input.is-actual {
   gap: 6px 16px;
 }
 .seg { white-space: nowrap; }
-.seg b { color: #fff; font-family: var(--font-mono); }
-.seg.ok b { color: #34d399; }
-.seg.under b { color: #f87171; }
-.seg.over b { color: #fbbf24; }
+.seg b { color: var(--ink); font-family: var(--font-mono); }
+.seg.ok b { color: var(--ok); }
+.seg.under b { color: var(--warn); }
+.seg.over b { color: var(--over); }
 
 .l-remark {
   margin-top: 10px;
@@ -1008,7 +1008,7 @@ input.is-actual {
   text-transform: uppercase;
 }
 .report-kpi strong {
-  color: #fff;
+  color: var(--ink);
   font-size: 22px;
   line-height: 1;
   font-family: var(--font-mono);
@@ -1041,7 +1041,7 @@ input.is-actual {
   margin-bottom: 14px;
 }
 .section-heading h3 {
-  color: #fff;
+  color: var(--ink);
   font-size: 15px;
   font-weight: 800;
 }
@@ -1123,7 +1123,7 @@ input.is-actual {
 .issue-row.over { border-color: var(--over); background: rgba(245, 158, 11, 0.02); }
 .issue-row.short { border-color: #38bdf8; background: rgba(56, 189, 248, 0.02); }
 .issue-row strong, .issue-row span { display: block; }
-.issue-row strong { color: #fff; }
+.issue-row strong { color: var(--ink); }
 .issue-row span, .issue-row small { color: var(--muted); margin-top: 3px; }
 
 /* Decisions HUD grids */
@@ -1165,7 +1165,7 @@ input.is-actual {
   place-content: center;
 }
 .report-empty strong {
-  color: #fff;
+  color: var(--ink);
   font-size: 15px;
 }
 
@@ -1195,7 +1195,7 @@ input.is-actual {
   font-family: inherit;
 }
 .shift-toggle-btn:hover {
-  color: #fff;
+  color: var(--ink);
 }
 .shift-toggle-btn.active {
   background: var(--accent);

@@ -1218,7 +1218,7 @@
       selectedWeekStart = selectedWeekStart || weekStart(activeDate || dateEl.value);
       var summary = Analytics.summarizeWeek(sheetsWithCurrent(), selectedWeekStart, selectedWeeklyShift);
       destroyCharts("weekly");
-      report.innerHTML = Analytics.reportHtml(summary, { scope: "week" });
+      report.innerHTML = Analytics.reportHtml(summary, { scope: "weekly" });
       if (summary && summary.entries) {
         initCharts("weekly", summary);
       }
@@ -1279,7 +1279,7 @@
       selectedMonthStart = selectedMonthStart || Analytics.monthStart(activeDate || dateEl.value);
       var summary = Analytics.summarizeMonth(sheetsWithCurrent(), selectedMonthStart, selectedMonthlyShift);
       destroyCharts("monthly");
-      report.innerHTML = Analytics.reportHtml(summary, { scope: "month" });
+      report.innerHTML = Analytics.reportHtml(summary, { scope: "monthly" });
       if (summary && summary.entries) {
         initCharts("monthly", summary);
       }
