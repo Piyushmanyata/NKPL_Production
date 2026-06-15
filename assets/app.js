@@ -906,7 +906,7 @@
                 backgroundColor: 'rgba(9, 9, 11, 0.95)',
                 titleFont: { size: 11, weight: 'bold', family: 'var(--font-sans)' },
                 bodyFont: { size: 11, family: 'var(--font-sans)' },
-                borderColor: 'rgba(255,255,255,0.08)',
+                borderColor: 'rgba(15, 23, 42, 0.08)',
                 borderWidth: 1,
                 callbacks: {
                   label: function(context) {
@@ -918,12 +918,12 @@
             scales: {
               y: {
                 beginAtZero: true,
-                grid: { color: 'rgba(255, 255, 255, 0.04)', borderDash: [4, 4] },
-                ticks: { font: { size: 10, family: 'var(--font-sans)' }, color: '#a1a1aa' }
+                grid: { color: 'rgba(15, 23, 42, 0.06)', borderDash: [4, 4] },
+                ticks: { font: { size: 10, family: 'var(--font-sans)' }, color: '#475569' }
               },
               x: {
                 grid: { display: false },
-                ticks: { font: { size: 10, family: 'var(--font-sans)' }, color: '#a1a1aa' }
+                ticks: { font: { size: 10, family: 'var(--font-sans)' }, color: '#475569' }
               }
             }
           }
@@ -958,7 +958,7 @@
               tooltip: {
                 padding: 10,
                 backgroundColor: 'rgba(9, 9, 11, 0.95)',
-                borderColor: 'rgba(255,255,255,0.08)',
+                borderColor: 'rgba(15, 23, 42, 0.08)',
                 borderWidth: 1,
                 callbacks: {
                   label: function(context) {
@@ -973,12 +973,12 @@
             scales: {
               x: {
                 beginAtZero: true,
-                grid: { color: 'rgba(255, 255, 255, 0.04)', borderDash: [4, 4] },
-                ticks: { font: { size: 10, family: 'var(--font-sans)' }, color: '#a1a1aa' }
+                grid: { color: 'rgba(15, 23, 42, 0.06)', borderDash: [4, 4] },
+                ticks: { font: { size: 10, family: 'var(--font-sans)' }, color: '#475569' }
               },
               y: {
                 grid: { display: false },
-                ticks: { font: { size: 9, family: 'var(--font-sans)' }, color: '#e4e4e7', autoSkip: false }
+                ticks: { font: { size: 9, family: 'var(--font-sans)' }, color: '#334155', autoSkip: false }
               }
             }
           }
@@ -1012,19 +1012,19 @@
               tooltip: {
                 padding: 10,
                 backgroundColor: 'rgba(9, 9, 11, 0.95)',
-                borderColor: 'rgba(255,255,255,0.08)',
+                borderColor: 'rgba(15, 23, 42, 0.08)',
                 borderWidth: 1
               }
             },
             scales: {
               y: {
                 beginAtZero: true,
-                grid: { color: 'rgba(255, 255, 255, 0.04)', borderDash: [4, 4] },
-                ticks: { font: { size: 10, family: 'var(--font-sans)' }, color: '#a1a1aa' }
+                grid: { color: 'rgba(15, 23, 42, 0.06)', borderDash: [4, 4] },
+                ticks: { font: { size: 10, family: 'var(--font-sans)' }, color: '#475569' }
               },
               x: {
                 grid: { display: false },
-                ticks: { font: { size: 10, family: 'var(--font-sans)' }, color: '#a1a1aa' }
+                ticks: { font: { size: 10, family: 'var(--font-sans)' }, color: '#475569' }
               }
             }
           }
@@ -1058,7 +1058,7 @@
               tooltip: {
                 padding: 10,
                 backgroundColor: 'rgba(9, 9, 11, 0.95)',
-                borderColor: 'rgba(255,255,255,0.08)',
+                borderColor: 'rgba(15, 23, 42, 0.08)',
                 borderWidth: 1,
                 callbacks: {
                   label: function(context) {
@@ -1070,12 +1070,12 @@
             scales: {
               y: {
                 beginAtZero: true,
-                grid: { color: 'rgba(255, 255, 255, 0.04)', borderDash: [4, 4] },
-                ticks: { font: { size: 10, family: 'var(--font-sans)' }, color: '#a1a1aa' }
+                grid: { color: 'rgba(15, 23, 42, 0.06)', borderDash: [4, 4] },
+                ticks: { font: { size: 10, family: 'var(--font-sans)' }, color: '#475569' }
               },
               x: {
                 grid: { display: false },
-                ticks: { font: { size: 10, family: 'var(--font-sans)' }, color: '#a1a1aa' }
+                ticks: { font: { size: 10, family: 'var(--font-sans)' }, color: '#475569' }
               }
             }
           }
@@ -1110,7 +1110,7 @@
               tooltip: {
                 padding: 10,
                 backgroundColor: 'rgba(9, 9, 11, 0.95)',
-                borderColor: 'rgba(255,255,255,0.08)',
+                borderColor: 'rgba(15, 23, 42, 0.08)',
                 borderWidth: 1,
                 callbacks: {
                   label: function(context) {
@@ -1123,16 +1123,16 @@
               y: {
                 beginAtZero: true,
                 suggestedMax: Math.max(110, Math.ceil(Math.max.apply(null, efficiencyData) / 10) * 10),
-                grid: { color: 'rgba(255, 255, 255, 0.04)', borderDash: [4, 4] },
+                grid: { color: 'rgba(15, 23, 42, 0.06)', borderDash: [4, 4] },
                 ticks: {
                   font: { size: 10, family: 'var(--font-sans)' },
-                  color: '#a1a1aa',
+                  color: '#475569',
                   callback: function(value) { return value + '%'; }
                 }
               },
               x: {
                 grid: { display: false },
-                ticks: { font: { size: 10, family: 'var(--font-sans)' }, color: '#a1a1aa' }
+                ticks: { font: { size: 10, family: 'var(--font-sans)' }, color: '#475569' }
               }
             }
           }
@@ -1177,14 +1177,14 @@
                 labels: {
                   boxWidth: 10,
                   font: { size: 9, weight: '600', family: 'var(--font-sans)' },
-                  color: '#e4e4e7',
+                  color: '#334155',
                   padding: 10
                 }
               },
               tooltip: {
                 padding: 10,
                 backgroundColor: 'rgba(9, 9, 11, 0.95)',
-                borderColor: 'rgba(255,255,255,0.08)',
+                borderColor: 'rgba(15, 23, 42, 0.08)',
                 borderWidth: 1,
                 callbacks: {
                   label: function(context) {
@@ -1197,13 +1197,13 @@
               x: {
                 stacked: true,
                 grid: { display: false },
-                ticks: { font: { size: 10, family: 'var(--font-sans)' }, color: '#a1a1aa' }
+                ticks: { font: { size: 10, family: 'var(--font-sans)' }, color: '#475569' }
               },
               y: {
                 stacked: true,
                 beginAtZero: true,
-                grid: { color: 'rgba(255, 255, 255, 0.04)', borderDash: [4, 4] },
-                ticks: { font: { size: 10, family: 'var(--font-sans)' }, color: '#a1a1aa' }
+                grid: { color: 'rgba(15, 23, 42, 0.06)', borderDash: [4, 4] },
+                ticks: { font: { size: 10, family: 'var(--font-sans)' }, color: '#475569' }
               }
             }
           }

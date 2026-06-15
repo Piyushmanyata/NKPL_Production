@@ -4,35 +4,35 @@
    ========================================================================== */
 
 :root {
-  /* Theme Colors (Zinc-based Industrial Dark Mode) */
-  --bg:           #09090b;       /* Zinc 950 - Canvas background */
-  --bg-panel:     #0f0f11;       /* Zinc 900 - Core panels */
-  --sidebar:      #141417;       /* Zinc 850 - Left sidebar */
-  --card:         rgba(24, 24, 27, 0.5);   /* Zinc 800 with glass opacity */
-  --card-hover:   rgba(39, 39, 42, 0.7);   /* Zinc 700 with glass opacity */
-  --ink:          #f4f4f5;       /* Zinc 100 - High contrast text */
-  --muted:        #a1a1aa;       /* Zinc 400 - Secondary text */
-  --line:         rgba(255, 255, 255, 0.06); /* Thin borders */
-  --field:        rgba(9, 9, 11, 0.6);      /* Sleek dark input background */
+  /* Theme Colors (Slate/Zinc Premium Light Mode) */
+  --bg:           #f1f5f9;       /* Slate 100 - Canvas background */
+  --bg-panel:     #ffffff;       /* Pure white core panels */
+  --sidebar:      #f8fafc;       /* Slate 50 - Left sidebar */
+  --card:         #ffffff;       /* Pure white card elements */
+  --card-hover:   #f8fafc;       /* Soft slate card hover state */
+  --ink:          #0f172a;       /* Slate 900 - Core text */
+  --muted:        #475569;       /* Slate 600 - Secondary text */
+  --line:         #cbd5e1;       /* Slate 300 - Borders */
+  --field:        #f8fafc;       /* Slate 50 - Input background */
   
-  /* Glowing Brand Accents */
-  --accent:       #6366f1;       /* Violet/Indigo brand color */
-  --accent-hover: #4f46e5;       /* Darker hover state */
-  --accent-glow:  rgba(99, 102, 241, 0.35);
-  --accent-soft:  rgba(99, 102, 241, 0.1);
+  /* Brand Accents */
+  --accent:       #4f46e5;       /* Indigo 600 */
+  --accent-hover: #3730a3;       /* Indigo 800 */
+  --accent-glow:  rgba(79, 70, 229, 0.15);
+  --accent-soft:  rgba(79, 70, 229, 0.05);
   
   /* Production Status Colors */
-  --ok:           #10b981;       /* Emerald success green */
-  --ok-soft:      rgba(16, 185, 129, 0.12);
-  --ok-glow:      rgba(16, 185, 129, 0.35);
+  --ok:           #059669;       /* Emerald 600 */
+  --ok-soft:      #ecfdf5;       /* Emerald 50 */
+  --ok-glow:      rgba(5, 150, 105, 0.15);
 
-  --warn:         #ef4444;       /* Rose/Red target under-attainment */
-  --warn-soft:    rgba(239, 68, 68, 0.12);
-  --warn-glow:    rgba(239, 68, 68, 0.3);
+  --warn:         #dc2626;       /* Red 600 */
+  --warn-soft:    #fef2f2;       /* Red 50 */
+  --warn-glow:    rgba(220, 38, 38, 0.15);
 
-  --over:         #f59e0b;       /* Amber target over-attainment */
-  --over-soft:    rgba(245, 158, 11, 0.12);
-  --over-glow:    rgba(245, 158, 11, 0.35);
+  --over:         #d97706;       /* Amber 600 */
+  --over-soft:    #fffbeb;       /* Amber 50 */
+  --over-glow:    rgba(217, 119, 6, 0.15);
 
   /* Fonts */
   --font-sans:    'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
@@ -209,7 +209,7 @@ body {
   border-bottom: 1px solid var(--line);
 }
 .panel-head h2 {
-  color: #fff;
+  color: var(--ink);
   font-size: 16px;
   font-weight: 800;
   letter-spacing: -0.01em;
@@ -311,7 +311,7 @@ input::placeholder {
 }
 input:focus, select:focus {
   border-color: var(--accent);
-  background-color: rgba(255, 255, 255, 0.04);
+  background-color: #ffffff;
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
@@ -368,17 +368,17 @@ input:focus, select:focus {
   margin-bottom: 4px;
 }
 .res.primary .rtag {
-  color: #a5b4fc;
+  color: var(--accent);
 }
 .res .rval {
   font-size: 22px;
   font-weight: 800;
-  color: #fff;
+  color: var(--ink);
   line-height: 1.1;
   font-family: var(--font-mono);
 }
 .res.primary .rval {
-  color: #c7d2fe;
+  color: var(--accent);
 }
 .res .rsub {
   font-size: 10.5px;
@@ -481,7 +481,7 @@ input:focus, select:focus {
   line-height: 1.6;
 }
 .disc-detail b {
-  color: #fff;
+  color: var(--ink);
   font-family: var(--font-mono);
 }
 .disc-log-btn {
@@ -525,8 +525,8 @@ input:focus, select:focus {
   transition: all 0.15s ease;
 }
 .btn-ghost:hover {
-  background: rgba(255,255,255,0.06);
-  color: #fff;
+  background: rgba(15, 23, 42, 0.05);
+  color: var(--ink);
 }
 
 /* ── Right Panel: Dashboard Tabs & Data ──────────────────────────────────── */
@@ -581,7 +581,7 @@ input:focus, select:focus {
 }
 .mini-btn:hover {
   background: var(--card-hover);
-  border-color: rgba(255, 255, 255, 0.15);
+  border-color: rgba(15, 23, 42, 0.15);
 }
 .mini-btn.accent {
   background: linear-gradient(135deg, var(--accent), #8b5cf6);
@@ -594,11 +594,11 @@ input:focus, select:focus {
   box-shadow: 0 4px 16px var(--accent-glow);
 }
 .mini-btn.text-danger {
-  color: #f87171;
+  color: var(--warn);
 }
 .mini-btn.text-danger:hover {
-  background: rgba(239, 68, 68, 0.08);
-  border-color: rgba(239, 68, 68, 0.3);
+  background: var(--warn-soft);
+  border-color: rgba(220, 38, 38, 0.3);
 }
 
 /* Tab bar container styling */
@@ -624,11 +624,11 @@ input:focus, select:focus {
   position: relative;
 }
 .tab-btn:hover {
-  color: #fff;
+  color: var(--ink);
 }
 .tab-btn.active {
   background: var(--bg-panel);
-  color: #fff;
+  color: var(--accent);
   border-color: var(--line) var(--line) transparent;
 }
 .tab-btn.active::after {
@@ -726,7 +726,7 @@ input:focus, select:focus {
   display: block;
   font-size: 15px;
   font-weight: 800;
-  color: #fff;
+  color: var(--ink);
   margin-bottom: 6px;
 }
 .empty span {
@@ -1074,22 +1074,22 @@ input.is-actual {
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  background: rgba(255,255,255,0.02);
+  background: var(--field);
 }
 .report-table tbody tr:last-child td {
   border-bottom: 0;
 }
 .report-table tbody tr:hover td {
-  background: rgba(255,255,255,0.015);
+  background: rgba(15, 23, 42, 0.015);
 }
 .report-table td {
   font-family: var(--font-mono);
-  color: #e4e4e7;
+  color: var(--ink);
 }
 .report-table td:first-child {
   font-family: var(--font-sans);
   font-weight: 600;
-  color: #fff;
+  color: var(--ink);
 }
 
 .report-status {
@@ -1141,7 +1141,7 @@ input.is-actual {
   background: rgba(255,255,255,0.01);
 }
 .decision-grid strong {
-  color: #fff;
+  color: var(--ink);
   font-size: 15px;
 }
 .decision-grid span {
@@ -1221,12 +1221,13 @@ input.is-actual {
   color: var(--muted);
 }
 .shift-filter-group .mini-btn:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: #fff;
+  background: rgba(15, 23, 42, 0.05);
+  color: var(--ink);
 }
 .shift-filter-group .mini-btn.active {
-  background: var(--card-hover);
+  background: var(--accent);
   color: #fff;
+  border-color: var(--accent);
 }
 
 select.l-line-shift {
@@ -1265,12 +1266,12 @@ select.l-line-shift {
 .history-card:hover {
   transform: translateY(-2px);
   background: var(--card-hover);
-  border-color: rgba(255,255,255,0.12);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  border-color: rgba(15, 23, 42, 0.12);
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.08);
 }
 .history-card h3 {
   font-size: 13.5px;
-  color: #fff;
+  color: var(--ink);
   display: flex;
   justify-content: space-between;
   gap: 10px;
@@ -1370,7 +1371,7 @@ select.l-line-shift {
 }
 .insight-card-head strong {
   font-size: 14.5px;
-  color: #fff;
+  color: var(--ink);
 }
 .insight-card-head span {
   color: var(--muted);
@@ -1387,7 +1388,7 @@ select.l-line-shift {
 .insight-metrics span {
   border: 1px solid var(--line);
   border-radius: 6px;
-  background: rgba(0, 0, 0, 0.15);
+  background: var(--field);
   padding: 6px 8px;
   color: var(--muted);
   font-size: 9.5px;
@@ -1395,13 +1396,13 @@ select.l-line-shift {
 }
 .insight-metrics b {
   display: block;
-  color: #fff;
+  color: var(--ink);
   font-size: 12px;
   margin-bottom: 2px;
   font-family: var(--font-mono);
 }
 .insight-card p {
-  color: #d4d4d8;
+  color: var(--muted);
   font-size: 12px;
   line-height: 1.5;
 }
@@ -1445,7 +1446,7 @@ select.l-line-shift {
 .shift-card-header h4 {
   font-size: 12.5px;
   font-weight: 800;
-  color: #fff;
+  color: var(--ink);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -1470,7 +1471,7 @@ select.l-line-shift {
 .shift-kpi strong {
   font-size: 16px;
   font-weight: 800;
-  color: #fff;
+  color: var(--ink);
   font-family: var(--font-mono);
 }
 .shift-kpi strong.positive { color: var(--ok); }
