@@ -1224,6 +1224,55 @@
       }
     }
 
+    function selectedWeekSheets() {
+      var start = selectedWeekStart || weekStart(activeDate || dateEl.value);
+      return sheetsWithCurrent().filter(function (sheet) {
+        return sheet && sheet.date && weekStart(sheet.date) === start && sheetHasContent(sheet.lines);
+      }).sort(function (a, b) { return a.date.localeCompare(b.date); });
+    }
+
+    function exportWeeklyCsv() {
+      selectedWeekStart = selectedWeekStart || weekStart(activeDate || dateEl.value);
+      var headers = [
+        "Week start", "Week end", "Date", "Shift", "Machine", "Item",
+        "Cycle time", "Cavity", "Hours", "Grammage", "Kg per bag",
+        "Target bags", "Target kg", "Target pieces",
+        "Actual bags", "Actual kg", "Actual pieces",
+        "Variance bags", "Variance kg", "Efficiency %", "Status", "Remark"
+      ];
+      var summary = Analytics.summarizeWeek(sheetsWithCurrent(), selectedWeekStart, selectedWeeklyShift);
+      var rows = [];
+      selectedWeekSheets().forEach(function (sheet) {
+        sheet.lines.forEach(function (line) {
+          var shift = line.shift || "A";
+          if (!lineHasContent(line) || (selectedWeeklyShift !== "total" && shift !== selectedWeeklyShift)) return;
+          var entry = Analytics.computeLine(Object.assign({}, line, { date: sheet.date }), tol());
+          rows.push([
+            selectedWeekStart, summary.end, sheet.date, shift, entry.machine, entry.item,
+            entry.cycleTime, entry.cavity, entry.hours, entry.grammage, entry.kgPerBag,
+            entry.targetBags == null ? "" : entry.targetBags.toFixed(2),
+            entry.targetKg == null ? "" : entry.targetKg.toFixed(2),
+            entry.targetPieces == null ? "" : Math.round(entry.targetPieces),
+            entry.actualBags == null ? "" : entry.actualBags,
+            entry.actualKg == null ? "" : entry.actualKg.toFixed(2),
+            entry.actualPieces == null ? "" : Math.round(entry.actualPieces),
+            entry.varianceBags == null ? "" : entry.varianceBags.toFixed(2),
+            entry.varianceKg == null ? "" : entry.varianceKg.toFixed(2),
+            entry.efficiency == null ? "" : entry.efficiency.toFixed(1),
+            Analytics.statusWord(entry.status),
+            entry.remark
+          ]);
+        });
+      });
+      if (!rows.length) {
+        setSync("No weekly rows to export", "warn");
+        return;
+      }
+      var suffix = selectedWeeklyShift === "total" ? "all-shifts" : "shift-" + selectedWeeklyShift;
+      downloadCsv("nkpl-weekly-production-" + selectedWeekStart + "-" + suffix + ".csv", headers, rows);
+      setSync("Weekly CSV exported", "ok");
+    }
+
     function renderMonthlyReport() {
       var report = document.getElementById("monthlyReport");
       if (!report) return;
