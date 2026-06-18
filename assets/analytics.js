@@ -615,10 +615,11 @@
         '    <h4>Daily Production Trend (kg)</h4>' +
         '    <div class="canvas-wrapper"><canvas id="' + scope + 'DailyTrendChart"></canvas></div>' +
         '  </div>' +
+        (scope !== "monthly" ?
         '  <div class="chart-container line-chart-container product-detail-chart">' +
         '    <h4>Product Output Detail (kg)</h4>' +
         '    <div class="canvas-wrapper detail"><canvas id="' + scope + 'ProductMixChart"></canvas></div>' +
-        '  </div>' +
+        '  </div>' : '') +
         '  <div class="chart-container bar-chart-container">' +
         '    <h4>Machine Performance (kg)</h4>' +
         '    <div class="canvas-wrapper"><canvas id="' + scope + 'MachinePerformanceChart"></canvas></div>' +
