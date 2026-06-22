@@ -1,1 +1,5 @@
 .vercel
+scripts/
+data/
+db/
+node_modules/

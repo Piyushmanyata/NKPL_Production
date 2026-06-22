@@ -1,0 +1,9 @@
+{
+  "name": "nkpl-production",
+  "version": "1.0.0",
+  "private": true,
+  "description": "NKPL Production tracking app - Vercel serverless",
+  "dependencies": {
+    "@neondatabase/serverless": "^0.10.4"
+  }
+}
