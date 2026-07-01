@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 /**
- * scripts/migrate-production-json-to-postgres.mjs
+ * scripts/restore-backup.mjs
  *
- * Imports a JSON backup file (from export-upstash-production.mjs) into Neon Postgres.
- * Only stores raw production line data — NO analytics or calculated fields.
- * Analytics are computed on the fly by the SQL view or the frontend.
+ * Imports a JSON backup file (from scripts/backup-postgres.mjs) into Neon
+ * Postgres. Only stores raw production line data — NO analytics or
+ * calculated fields. Analytics are computed on the fly by the SQL view or
+ * the frontend. Use this to restore from a backup after data loss.
  *
  * Usage:
- *   node scripts/migrate-production-json-to-postgres.mjs data/upstash-production-backup-YYYY-MM-DD-HHMM.json
+ *   node scripts/restore-backup.mjs data/postgres-backup-YYYY-MM-DD-HHMM.json
  *
  * Requires:
  *   DATABASE_URL in .env.local or environment
@@ -41,7 +42,7 @@ try {
 // ── Args ─────────────────────────────────────────────────────────────────────
 const backupPath = process.argv[2];
 if (!backupPath) {
-  console.error("❌  Usage: node scripts/migrate-production-json-to-postgres.mjs <backup-file.json>");
+  console.error("❌  Usage: node scripts/restore-backup.mjs <backup-file.json>");
   process.exit(1);
 }
 
@@ -106,11 +107,11 @@ function n(v) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-// ── Migration ─────────────────────────────────────────────────────────────────
+// ── Restore ────────────────────────────────────────────────────────────────────
 const displayUrl = DATABASE_URL.replace(/:([^@:]+)@/, ":****@");
 
 console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-console.log("  NKPL Production — JSON → Postgres Migration");
+console.log("  NKPL Production — Restore Backup to Postgres");
 console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 console.log(`  Source   : ${backupPath}`);
 console.log(`  Database : ${displayUrl}`);
@@ -228,7 +229,7 @@ for (const sheet of sheets) {
 // ── Summary ───────────────────────────────────────────────────────────────────
 console.log();
 console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-console.log("  Migration Summary");
+console.log("  Restore Summary");
 console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 console.log(`  Sheets imported : ${sheetsImported}`);
 console.log(`  Sheets skipped  : ${sheetsSkipped}`);
@@ -244,11 +245,11 @@ if (errors.length > 0) {
 
 console.log();
 if (errors.length === 0) {
-  console.log("  ✅  Migration completed with no errors.");
+  console.log("  ✅  Restore completed with no errors.");
   console.log();
   console.log("  Next step:");
-  console.log(`  node scripts/validate-migration.mjs ${backupPath}`);
+  console.log(`  node scripts/verify-backup.mjs ${backupPath}`);
 } else {
-  console.log("  ⚠️   Migration completed with errors. Review above.");
+  console.log("  ⚠️   Restore completed with errors. Review above.");
   process.exit(1);
 }

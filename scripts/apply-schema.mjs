@@ -205,6 +205,5 @@ console.log();
 
 if (failed > 0) process.exit(1);
 
-console.log("  Next step:");
-console.log("  node scripts/export-upstash-production.mjs");
-console.log("  node scripts/migrate-production-json-to-postgres.mjs data/<backup>.json");
+console.log("  Next step (optional):");
+console.log("  node scripts/backup-postgres.mjs");

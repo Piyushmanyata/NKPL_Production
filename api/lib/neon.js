@@ -32,4 +32,13 @@ function getSql() {
   return _sqlClient;
 }
 
-module.exports = { getSql };
+/**
+ * Lightweight connectivity check for a health-check endpoint.
+ */
+async function ping() {
+  const sql = getSql();
+  await sql`SELECT 1`;
+  return true;
+}
+
+module.exports = { getSql, ping };

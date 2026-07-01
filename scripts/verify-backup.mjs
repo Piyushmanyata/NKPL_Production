@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 /**
- * scripts/validate-migration.mjs
+ * scripts/verify-backup.mjs
  *
- * Compares the Upstash JSON backup against Neon Postgres to confirm
- * that every sheet and every raw production line was imported correctly.
+ * Compares a JSON backup file (from scripts/backup-postgres.mjs) against the
+ * live Neon Postgres data to confirm every sheet and line still matches —
+ * e.g. after a restore, or as a periodic integrity check.
  *
  * Usage:
- *   node scripts/validate-migration.mjs data/upstash-production-backup-YYYY-MM-DD-HHMM.json
+ *   node scripts/verify-backup.mjs data/postgres-backup-YYYY-MM-DD-HHMM.json
  *
  * Requires:
  *   DATABASE_URL in .env.local or environment
@@ -40,7 +41,7 @@ try {
 // ── Args ─────────────────────────────────────────────────────────────────────
 const backupPath = process.argv[2];
 if (!backupPath) {
-  console.error("❌  Usage: node scripts/validate-migration.mjs <backup-file.json>");
+  console.error("❌  Usage: node scripts/verify-backup.mjs <backup-file.json>");
   process.exit(1);
 }
 
@@ -89,9 +90,9 @@ function n(v) {
   return Number.isFinite(p) ? p : null;
 }
 
-const jsonContentSheets = jsonSheets.filter(
-  (s) => /^\d{4}-\d{2}-\d{2}$/.test(s.date || "") &&
-         Array.isArray(s.lines) && s.lines.some(hasLineContent)
+const jsonAllSheets = jsonSheets.filter((s) => /^\d{4}-\d{2}-\d{2}$/.test(s.date || ""));
+const jsonContentSheets = jsonAllSheets.filter(
+  (s) => Array.isArray(s.lines) && s.lines.some(hasLineContent)
 );
 const jsonTotalLines = jsonContentSheets.reduce(
   (sum, s) => sum + s.lines.filter(hasLineContent).length, 0
@@ -155,20 +156,20 @@ const displayUrl = DATABASE_URL.replace(/:([^@:]+)@/, ":****@");
 
 console.log();
 console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-console.log("  NKPL Production — Migration Validation Report");
+console.log("  NKPL Production — Backup Verification Report");
 console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 console.log(`  Backup   : ${backupPath}`);
 console.log(`  Database : ${displayUrl}`);
 console.log(`  Checked  : ${new Date().toISOString()}`);
 console.log();
-console.log(`  ${"Metric".padEnd(COL)}  ${"Upstash JSON".padEnd(16)}  ${"Postgres".padEnd(16)}  Match?`);
+console.log(`  ${"Metric".padEnd(COL)}  ${"Backup JSON".padEnd(16)}  ${"Postgres".padEnd(16)}  Match?`);
 divider();
 
-const sheetMatch   = jsonContentSheets.length === pgSheetCount.cnt;
+const sheetMatch   = jsonAllSheets.length === pgSheetCount.cnt;
 const lineMatch    = jsonTotalLines === pgLineCount.cnt;
 const latestMatch  = jsonLatestDate === pgLatest.d;
 
-row("Sheet count",   jsonContentSheets.length, pgSheetCount.cnt, sheetMatch);
+row("Sheet count",   jsonAllSheets.length,     pgSheetCount.cnt, sheetMatch);
 row("Line count",    jsonTotalLines,            pgLineCount.cnt,  lineMatch);
 row("Latest date",   jsonLatestDate || "—",    pgLatest.d || "—", latestMatch);
 
@@ -209,11 +210,10 @@ const allPass = sheetMatch && lineMatch && latestMatch && dateMismatches === 0;
 console.log();
 console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 if (allPass) {
-  console.log("  ✅  VALIDATION PASSED — Postgres matches Upstash backup exactly.");
-  console.log("      Safe to deploy. Dual-write is active for 7 days.");
+  console.log("  ✅  VERIFICATION PASSED — Postgres matches the backup exactly.");
 } else {
-  console.log("  ❌  VALIDATION FAILED — See mismatches above.");
-  console.log("      Re-run migration or investigate discrepancies before deploying.");
+  console.log("  ❌  VERIFICATION FAILED — See mismatches above.");
+  console.log("      Investigate discrepancies before relying on this backup.");
   process.exit(1);
 }
 console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");

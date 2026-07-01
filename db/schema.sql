@@ -1,7 +1,6 @@
 -- ============================================================
 -- NKPL Production Database Schema
--- Neon Postgres (serverless)
--- Created during Upstash → Neon migration
+-- Neon Postgres (serverless) — sole datastore for production data
 -- ============================================================
 
 -- ── Production Sheets ────────────────────────────────────────
