@@ -313,6 +313,154 @@
     });
   }
 
+  function computeMouldAnalysis(sheets, periodStart, periodEnd, shiftFilter) {
+    var sortedSheets = (Array.isArray(sheets) ? sheets : [])
+      .filter(function (s) { return s && s.date; })
+      .slice()
+      .sort(function (a, b) { return a.date.localeCompare(b.date); });
+
+    var allLines = [];
+    sortedSheets.forEach(function (sheet) {
+      if (Array.isArray(sheet.lines)) {
+        var sortedLines = sheet.lines
+          .filter(lineHasContent)
+          .slice()
+          .sort(function (a, b) {
+            var shiftA = String(a.shift || "A").trim().toUpperCase();
+            var shiftB = String(b.shift || "A").trim().toUpperCase();
+            return shiftA.localeCompare(shiftB);
+          });
+        sortedLines.forEach(function (line) {
+          allLines.push(Object.assign({}, line, { date: sheet.date }));
+        });
+      }
+    });
+
+    var machineLines = {};
+    allLines.forEach(function (line) {
+      var shift = line.shift || "A";
+      if (shiftFilter && shiftFilter !== "total" && shift !== shiftFilter) {
+        return;
+      }
+      var mName = normalizeMachineName(line.machine);
+      if (!machineLines[mName]) {
+        machineLines[mName] = [];
+      }
+      machineLines[mName].push(line);
+    });
+
+    var allMouldRuns = [];
+    Object.keys(machineLines).forEach(function (mName) {
+      var lines = machineLines[mName];
+      var currentRun = null;
+
+      lines.forEach(function (line) {
+        var normItem = normalizeItemName(line.item);
+        var runHours = num(line.hours) || 0;
+        var actualBags = num(line.actualBags) || 0;
+        var kgPerBag = num(line.kgPerBag) || 0;
+        var actualKg = actualBags * kgPerBag;
+
+        if (!currentRun) {
+          currentRun = {
+            machine: mName,
+            item: line.item || "Unspecified item",
+            normalizedItem: normItem,
+            startDate: line.date,
+            startShift: line.shift || "A",
+            endDate: line.date,
+            endShift: line.shift || "A",
+            runHours: runHours,
+            actualBags: actualBags,
+            actualKg: actualKg,
+            entriesCount: 1
+          };
+        } else {
+          if (normItem === currentRun.normalizedItem) {
+            currentRun.endDate = line.date;
+            currentRun.endShift = line.shift || "A";
+            currentRun.runHours += runHours;
+            currentRun.actualBags += actualBags;
+            currentRun.actualKg += actualKg;
+            currentRun.entriesCount += 1;
+          } else {
+            currentRun.changeDate = line.date;
+            currentRun.changeShift = line.shift || "A";
+            currentRun.nextItem = line.item || "Unspecified item";
+            allMouldRuns.push(currentRun);
+
+            currentRun = {
+              machine: mName,
+              item: line.item || "Unspecified item",
+              normalizedItem: normItem,
+              startDate: line.date,
+              startShift: line.shift || "A",
+              endDate: line.date,
+              endShift: line.shift || "A",
+              runHours: runHours,
+              actualBags: actualBags,
+              actualKg: actualKg,
+              entriesCount: 1
+            };
+          }
+        }
+      });
+
+      if (currentRun) {
+        currentRun.changeDate = null;
+        currentRun.changeShift = null;
+        currentRun.nextItem = null;
+        allMouldRuns.push(currentRun);
+      }
+    });
+
+    var periodRuns = allMouldRuns.filter(function (run) {
+      var runStart = run.startDate;
+      var runEnd = run.changeDate || run.endDate;
+      return runStart <= periodEnd && runEnd >= periodStart;
+    });
+
+    var completedRuns = periodRuns.filter(function (run) {
+      return run.changeDate && run.changeDate >= periodStart && run.changeDate <= periodEnd;
+    });
+
+    var totalChanges = completedRuns.length;
+    var totalDays = 0;
+    var totalHours = 0;
+    var totalBags = 0;
+    var totalKg = 0;
+
+    completedRuns.forEach(function (run) {
+      var dStart = new Date(run.startDate + "T00:00:00");
+      var dEnd = new Date(run.changeDate + "T00:00:00");
+      var diffDays = Math.ceil(Math.abs(dEnd - dStart) / (1000 * 60 * 60 * 24));
+      run.calendarDays = diffDays;
+      totalDays += diffDays;
+      totalHours += run.runHours;
+      totalBags += run.actualBags;
+      totalKg += run.actualKg;
+    });
+
+    var avgCalendarDays = totalChanges ? totalDays / totalChanges : 0;
+    var avgRunHours = totalChanges ? totalHours / totalChanges : 0;
+    var avgBagsBeforeChange = totalChanges ? totalBags / totalChanges : 0;
+    var avgKgBeforeChange = totalChanges ? totalKg / totalChanges : 0;
+
+    periodRuns.sort(function (a, b) {
+      return a.machine.localeCompare(b.machine) || a.startDate.localeCompare(b.startDate);
+    });
+
+    return {
+      periodRuns: periodRuns,
+      completedRuns: completedRuns,
+      totalChanges: totalChanges,
+      avgCalendarDays: avgCalendarDays,
+      avgRunHours: avgRunHours,
+      avgBagsBeforeChange: avgBagsBeforeChange,
+      avgKgBeforeChange: avgKgBeforeChange
+    };
+  }
+
   function summarizeLines(lines, tolerance) {
     var entries = (Array.isArray(lines) ? lines : [])
       .filter(lineHasContent)
@@ -384,6 +532,7 @@
     totals.shiftLabel = shiftLabel(shiftFilter);
     totals.title = "Weekly production report";
     totals.subtitle = formatDate(start) + " to " + formatDate(totals.end);
+    totals.mouldAnalysis = computeMouldAnalysis(sheets, start, totals.end, shiftFilter);
     
     var activeWeekSheets = weekSheets.filter(function (sheet) {
       return sheet.lines.some(function (l) {
@@ -436,6 +585,7 @@
     
     var dateObj = new Date(start + "T12:00:00");
     totals.subtitle = dateObj.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+    totals.mouldAnalysis = computeMouldAnalysis(sheets, start, totals.end, shiftFilter);
     
     var activeMonthSheets = monthSheets.filter(function (sheet) {
       return sheet.lines.some(function (l) {
@@ -552,6 +702,35 @@
     }).join("");
   }
 
+  function mouldChangeRows(analysis) {
+    if (!analysis || !analysis.periodRuns || !analysis.periodRuns.length) return [];
+    return analysis.periodRuns.map(function (run) {
+      var dStart = new Date(run.startDate + "T00:00:00");
+      var dEnd = new Date((run.changeDate || run.endDate) + "T00:00:00");
+      var diffDays = Math.ceil(Math.abs(dEnd - dStart) / (1000 * 60 * 60 * 24));
+      var durationStr = (diffDays === 0 ? "Same day" : diffDays + " day" + (diffDays > 1 ? "s" : "")) + " (" + fmt(run.runHours, 1) + " hr)";
+
+      var statusHtml;
+      if (run.changeDate) {
+        statusHtml = '<span class="mould-statusbadge badge-changed">Changed</span><div class="next-item-sub">Next: ' + esc(run.nextItem) + '</div>';
+      } else {
+        statusHtml = '<span class="mould-statusbadge badge-active">Active</span><div class="next-item-sub">Current mould</div>';
+      }
+
+      var outputStr = fmt(run.actualBags, 0) + " bags (" + fmt(run.actualKg, 1) + " kg)";
+      var rangeStr = formatDate(run.startDate) + " to " + (run.changeDate ? formatDate(run.changeDate) : "Present");
+
+      return [
+        esc(run.machine),
+        esc(run.item),
+        esc(rangeStr),
+        esc(durationStr),
+        esc(outputStr),
+        statusHtml
+      ];
+    });
+  }
+
   function dayRows(summary) {
     return (summary.days || []).map(function (day) {
       return [
@@ -606,6 +785,7 @@
     var shiftSection = "";
     var insightSection = "";
     var machineProductSection = "";
+    var mouldChangeSection = "";
     if (scope === "weekly" || scope === "monthly") {
       var scopeLabel = scope === "weekly" ? "Weekly" : "Monthly";
       chartSection = '<section class="report-block charts-section">' +
@@ -676,6 +856,30 @@
         '  </div>' +
         '</div>' +
         '</section>';
+
+      var ma = summary.mouldAnalysis;
+      var mouldKpisHtml = "";
+      if (ma) {
+        var avgDur = ma.totalChanges 
+          ? ma.avgCalendarDays.toFixed(1) + " days (" + fmt(ma.avgRunHours, 1) + " hr)"
+          : "-";
+        var avgOut = ma.totalChanges 
+          ? fmt(ma.avgBagsBeforeChange, 0) + " bags (" + fmt(ma.avgKgBeforeChange, 1) + " kg)"
+          : "-";
+        
+        mouldKpisHtml = '<div class="report-kpis mould-kpis-grid">' +
+          kpi("Mould Changes Completed", ma.totalChanges + " changeover(s)", "In selected period", "") +
+          kpi("Average Mould Life", avgDur, "Run time before change", "") +
+          kpi("Average Run Output", avgOut, "Bags / weight before change", "") +
+          '</div>';
+      }
+
+      mouldChangeSection = '<section class="report-block mould-analysis-section">' +
+        '<div class="section-heading"><div><span class="eyebrow">Mould Analytics</span><h3>Mould Change & Run Analysis</h3></div>' +
+        '<span class="section-note">' + esc(ma ? ma.periodRuns.length : 0) + ' active/completed run(s) analyzed</span></div>' +
+        mouldKpisHtml +
+        table(["Machine / line", "Mould / Item", "Run Period", "Run Duration", "Production Output", "Status"], mouldChangeRows(ma), "No mould runs recorded in this period.") +
+        '</section>';
     }
 
     var exceptionsHtml = "";
@@ -705,6 +909,7 @@
       table(["Machine / line", "Runs", "Run hr", "Bags", "Actual kg", "Kg / hr", "Attainment", "Short runs"], machineRows(summary), "No machine breakdown.") +
       "</section>" +
       machineProductSection +
+      mouldChangeSection +
       exceptionsHtml +
       shortRunsHtml;
   }
@@ -723,6 +928,7 @@
     summarizeWeek: summarizeWeek,
     monthStart: monthStart,
     summarizeMonth: summarizeMonth,
-    weekStart: weekStart
+    weekStart: weekStart,
+    computeMouldAnalysis: computeMouldAnalysis
   };
 })();

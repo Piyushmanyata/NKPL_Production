@@ -1573,6 +1573,41 @@ select.l-line-shift {
   }
 }
 
+/* ── Mould Analytics Badge & Layout Styles ────────────────────────── */
+.mould-statusbadge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 3px 8px;
+  border-radius: 99px;
+  white-space: nowrap;
+}
+
+.mould-statusbadge.badge-changed {
+  background: rgba(99, 102, 241, 0.15); /* indigo-soft */
+  color: #818cf8; /* indigo light */
+  border: 1px solid rgba(99, 102, 241, 0.25);
+}
+
+.mould-statusbadge.badge-active {
+  background: rgba(16, 185, 129, 0.15); /* emerald-soft */
+  color: #34d399; /* emerald light */
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.next-item-sub {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 4px;
+  font-weight: 400;
+}
+
+.mould-kpis-grid {
+  margin-bottom: 20px;
+}
+
 /* ── Ink-Efficient Black-and-White Print Layouts ────────────────────────── */
 #printHead {
   display: none;
