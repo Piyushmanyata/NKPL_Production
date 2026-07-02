@@ -174,8 +174,11 @@ async function getSheetsByDateRange(startDate, days) {
 // ── Writes ─────────────────────────────────────────────────────────────────
 
 /**
- * Upsert a single sheet and all its lines as one atomic Postgres transaction
- * (one HTTP round trip regardless of line count).
+ * Upsert a single sheet and all its lines as one atomic Postgres transaction.
+ * All lines are written via a single multi-row UPSERT (UNNEST of column
+ * arrays) rather than one INSERT per line — a sheet with 20 lines is 3
+ * statements total instead of 22, which cuts the WAL/index-maintenance
+ * volume generated per autosave roughly proportionally to line count.
  * Returns the saved sheet in the same shape as a read.
  */
 async function saveSheet(sheet) {
@@ -211,8 +214,8 @@ async function saveSheet(sheet) {
       : sql`DELETE FROM production_lines WHERE sheet_date = ${date}::date`,
   ];
 
-  for (const line of validLines) {
-    const p = lineToParams(line);
+  if (validLines.length > 0) {
+    const params = validLines.map(lineToParams);
     queries.push(sql`
       INSERT INTO production_lines (
         id, sheet_id, sheet_date,
@@ -220,15 +223,29 @@ async function saveSheet(sheet) {
         cycle_time, cavity, hours, grammage, kg_per_bag, actual_bags,
         remark, from_calc,
         created_at, updated_at
-      ) VALUES (
-        ${p.id},
+      )
+      SELECT
+        u.id,
         (SELECT id FROM production_sheets WHERE sheet_date = ${date}::date),
         ${date}::date,
-        ${p.machine}, ${p.shift}, ${p.item},
-        ${p.cycle_time}, ${p.cavity}, ${p.hours}, ${p.grammage}, ${p.kg_per_bag}, ${p.actual_bags},
-        ${p.remark}, ${p.from_calc},
+        u.machine, u.shift, u.item,
+        u.cycle_time, u.cavity, u.hours, u.grammage, u.kg_per_bag, u.actual_bags,
+        u.remark, u.from_calc,
         NOW(), NOW()
-      )
+      FROM UNNEST(
+        ${params.map((p) => p.id)}::text[],
+        ${params.map((p) => p.machine)}::text[],
+        ${params.map((p) => p.shift)}::text[],
+        ${params.map((p) => p.item)}::text[],
+        ${params.map((p) => p.cycle_time)}::numeric[],
+        ${params.map((p) => p.cavity)}::int[],
+        ${params.map((p) => p.hours)}::numeric[],
+        ${params.map((p) => p.grammage)}::numeric[],
+        ${params.map((p) => p.kg_per_bag)}::numeric[],
+        ${params.map((p) => p.actual_bags)}::numeric[],
+        ${params.map((p) => p.remark)}::text[],
+        ${params.map((p) => p.from_calc)}::boolean[]
+      ) AS u(id, machine, shift, item, cycle_time, cavity, hours, grammage, kg_per_bag, actual_bags, remark, from_calc)
       ON CONFLICT (id) DO UPDATE SET
         sheet_id    = EXCLUDED.sheet_id,
         sheet_date  = EXCLUDED.sheet_date,

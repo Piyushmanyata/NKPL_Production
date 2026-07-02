@@ -111,21 +111,34 @@ track(await exec("CREATE TABLE production_lines", () => sql`
   )
 `));
 
-// 3. Indexes
+// 3. Indexes — only sheet_date is indexed (see db/schema.sql for why).
 track(await exec("CREATE INDEX idx_production_lines_date", () => sql`
   CREATE INDEX IF NOT EXISTS idx_production_lines_date ON production_lines(sheet_date)
 `));
 
-track(await exec("CREATE INDEX idx_production_lines_machine", () => sql`
-  CREATE INDEX IF NOT EXISTS idx_production_lines_machine ON production_lines(machine)
+// Drop legacy unused indexes from earlier schema versions, if present —
+// machine/item/shift are only ever filtered client-side, never in SQL, so
+// these indexes were pure write amplification (extra WAL per line upsert).
+track(await exec("DROP INDEX idx_production_lines_machine", () => sql`
+  DROP INDEX IF EXISTS idx_production_lines_machine
 `));
 
-track(await exec("CREATE INDEX idx_production_lines_item", () => sql`
-  CREATE INDEX IF NOT EXISTS idx_production_lines_item ON production_lines(item)
+track(await exec("DROP INDEX idx_production_lines_item", () => sql`
+  DROP INDEX IF EXISTS idx_production_lines_item
 `));
 
-track(await exec("CREATE INDEX idx_production_lines_shift", () => sql`
-  CREATE INDEX IF NOT EXISTS idx_production_lines_shift ON production_lines(shift)
+track(await exec("DROP INDEX idx_production_lines_shift", () => sql`
+  DROP INDEX IF EXISTS idx_production_lines_shift
+`));
+
+// Storage tuning — keep dead-tuple bloat from accumulating between
+// autovacuum runs given frequent small autosave upserts.
+track(await exec("SET autovacuum tuning on production_sheets", () => sql`
+  ALTER TABLE production_sheets SET (autovacuum_vacuum_scale_factor = 0.05, autovacuum_analyze_scale_factor = 0.05)
+`));
+
+track(await exec("SET autovacuum tuning on production_lines", () => sql`
+  ALTER TABLE production_lines SET (autovacuum_vacuum_scale_factor = 0.05, autovacuum_analyze_scale_factor = 0.05)
 `));
 
 // 4. Analytics view (computed on every read — no analytics stored in tables)
@@ -171,6 +184,13 @@ track(await exec("CREATE VIEW production_line_metrics", () => sql`
     END AS status
   FROM production_lines l
 `));
+
+// 5. Reclaim space — VACUUM FULL rewrites the table+indexes to their minimum
+// size (regular VACUUM only marks space reusable in-place, it doesn't shrink
+// the file). Tables here are small (hundreds of rows) so the exclusive lock
+// this takes is momentary.
+track(await exec("VACUUM FULL production_lines", () => sql`VACUUM (FULL, ANALYZE) production_lines`));
+track(await exec("VACUUM FULL production_sheets", () => sql`VACUUM (FULL, ANALYZE) production_sheets`));
 
 // ── Verify ────────────────────────────────────────────────────────────────────
 console.log();

@@ -42,10 +42,19 @@ CREATE TABLE IF NOT EXISTS production_lines (
 );
 
 -- ── Indexes ──────────────────────────────────────────────────
-CREATE INDEX IF NOT EXISTS idx_production_lines_date    ON production_lines(sheet_date);
-CREATE INDEX IF NOT EXISTS idx_production_lines_machine ON production_lines(machine);
-CREATE INDEX IF NOT EXISTS idx_production_lines_item    ON production_lines(item);
-CREATE INDEX IF NOT EXISTS idx_production_lines_shift   ON production_lines(shift);
+-- Only sheet_date is indexed: it's the sole column the app ever filters or
+-- deletes by (saveSheet's stale-line cleanup). machine/item/shift are only
+-- ever filtered client-side after fetch, so indexing them here would just
+-- be write amplification (extra WAL + index pages) with no read benefit.
+CREATE INDEX IF NOT EXISTS idx_production_lines_date ON production_lines(sheet_date);
+
+-- ── Storage tuning ───────────────────────────────────────────
+-- These two tables see frequent small upserts (autosave every ~500ms of
+-- inactivity). Lower autovacuum thresholds keep dead-tuple bloat from
+-- accumulating between autovacuum runs, which keeps disk usage flat over
+-- time instead of growing until the default 20%-dead-tuples threshold fires.
+ALTER TABLE production_sheets SET (autovacuum_vacuum_scale_factor = 0.05, autovacuum_analyze_scale_factor = 0.05);
+ALTER TABLE production_lines  SET (autovacuum_vacuum_scale_factor = 0.05, autovacuum_analyze_scale_factor = 0.05);
 
 -- ── Analytics View ───────────────────────────────────────────
 -- Computes target_bags, target_kg, target_pieces, efficiency_pct, and status
