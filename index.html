@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/assets/styles.css" />
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
@@ -28,9 +28,9 @@
       <div class="shift-wrap">
         <label>Shift</label>
         <div class="shift-toggle-group" id="editorShiftGroup">
-          <button type="button" class="shift-toggle-btn active" data-shift="A">A</button>
-          <button type="button" class="shift-toggle-btn" data-shift="B">B</button>
-          <button type="button" class="shift-toggle-btn" data-shift="all">All</button>
+          <button type="button" class="shift-toggle-btn active" data-shift="A" aria-pressed="true">A</button>
+          <button type="button" class="shift-toggle-btn" data-shift="B" aria-pressed="false">B</button>
+          <button type="button" class="shift-toggle-btn" data-shift="all" aria-pressed="false">All</button>
         </div>
       </div>
       <div class="tol-wrap">
@@ -154,14 +154,14 @@
       </div>
       <input id="backupFileInput" type="file" accept=".json,application/json" style="display:none" />
 
-      <div class="tabbar no-print">
-        <button class="tab-btn active" data-view="editor" type="button">Editor</button>
-        <button class="tab-btn" data-view="daily" type="button">Daily view</button>
-        <button class="tab-btn" data-view="weekly" type="button">Weekly view</button>
-        <button class="tab-btn" data-view="monthly" type="button">Monthly view</button>
+      <div class="tabbar no-print" role="tablist" aria-label="Production views">
+        <button class="tab-btn active" id="editorTab" data-view="editor" type="button" role="tab" aria-controls="editorView" aria-selected="true">Editor</button>
+        <button class="tab-btn" id="dailyTab" data-view="daily" type="button" role="tab" aria-controls="dailyView" aria-selected="false">Daily view</button>
+        <button class="tab-btn" id="weeklyTab" data-view="weekly" type="button" role="tab" aria-controls="weeklyView" aria-selected="false">Weekly view</button>
+        <button class="tab-btn" id="monthlyTab" data-view="monthly" type="button" role="tab" aria-controls="monthlyView" aria-selected="false">Monthly view</button>
       </div>
 
-      <div class="view-panel active" id="editorView">
+      <div class="view-panel active" id="editorView" role="tabpanel" aria-labelledby="editorTab" aria-hidden="false">
         <div class="summary-bar" id="summary" aria-live="polite">
           <div id="printHead">
             <h2>NKPL · Shift Production Check</h2>
@@ -180,7 +180,7 @@
         </div>
       </div>
 
-      <div class="view-panel" id="dailyView">
+      <div class="view-panel" id="dailyView" role="tabpanel" aria-labelledby="dailyTab" aria-hidden="true">
         <div class="history-tools">
           <button class="mini-btn" id="dailyRefreshBtn" type="button">
             <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path></svg>Refresh
@@ -193,9 +193,9 @@
           </button>
           <div class="spacer"></div>
           <div class="shift-filter-group" id="dailyShiftFilterGroup">
-            <button class="mini-btn active" data-shift="total" type="button">Total</button>
-            <button class="mini-btn" data-shift="A" type="button">Shift A</button>
-            <button class="mini-btn" data-shift="B" type="button">Shift B</button>
+            <button class="mini-btn active" data-shift="total" type="button" aria-pressed="true">Total</button>
+            <button class="mini-btn" data-shift="A" type="button" aria-pressed="false">Shift A</button>
+            <button class="mini-btn" data-shift="B" type="button" aria-pressed="false">Shift B</button>
           </div>
         </div>
         <div class="report-scroll">
@@ -213,7 +213,7 @@
         </div>
       </div>
 
-      <div class="view-panel" id="weeklyView">
+      <div class="view-panel" id="weeklyView" role="tabpanel" aria-labelledby="weeklyTab" aria-hidden="true">
         <div class="history-tools">
           <button class="mini-btn" id="weeklyRefreshBtn" type="button">
             <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path></svg>Refresh
@@ -229,9 +229,9 @@
           </button>
           <div class="spacer"></div>
           <div class="shift-filter-group" id="weeklyShiftFilterGroup">
-            <button class="mini-btn active" data-shift="total" type="button">Total</button>
-            <button class="mini-btn" data-shift="A" type="button">Shift A</button>
-            <button class="mini-btn" data-shift="B" type="button">Shift B</button>
+            <button class="mini-btn active" data-shift="total" type="button" aria-pressed="true">Total</button>
+            <button class="mini-btn" data-shift="A" type="button" aria-pressed="false">Shift A</button>
+            <button class="mini-btn" data-shift="B" type="button" aria-pressed="false">Shift B</button>
           </div>
         </div>
         <div class="report-scroll">
@@ -249,7 +249,7 @@
         </div>
       </div>
 
-      <div class="view-panel" id="monthlyView">
+      <div class="view-panel" id="monthlyView" role="tabpanel" aria-labelledby="monthlyTab" aria-hidden="true">
         <div class="history-tools">
           <button class="mini-btn" id="monthlyRefreshBtn" type="button">
             <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path></svg>Refresh
@@ -265,9 +265,9 @@
           </button>
           <div class="spacer"></div>
           <div class="shift-filter-group" id="monthlyShiftFilterGroup">
-            <button class="mini-btn active" data-shift="total" type="button">Total</button>
-            <button class="mini-btn" data-shift="A" type="button">Shift A</button>
-            <button class="mini-btn" data-shift="B" type="button">Shift B</button>
+            <button class="mini-btn active" data-shift="total" type="button" aria-pressed="true">Total</button>
+            <button class="mini-btn" data-shift="A" type="button" aria-pressed="false">Shift A</button>
+            <button class="mini-btn" data-shift="B" type="button" aria-pressed="false">Shift B</button>
           </div>
         </div>
         <div class="report-scroll">
@@ -288,7 +288,7 @@
     </div><!-- /panel-right -->
   </div><!-- /workspace -->
 
-  <script src="/assets/analytics.js"></script>
-  <script src="/assets/app.js"></script>
+  <script defer src="/assets/analytics.js"></script>
+  <script defer src="/assets/app.js"></script>
 </body>
 </html>

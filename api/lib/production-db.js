@@ -11,6 +11,83 @@ const { getSql } = require("./neon");
 
 const FIXED_TOLERANCE = 1.5;
 const SOURCE_APP = "nkpl-production";
+const MAX_LINES_PER_SHEET = 500;
+const MAX_SHEETS_PER_IMPORT = 500;
+
+function clientError(message) {
+  const error = new Error(message);
+  error.statusCode = 400;
+  return error;
+}
+
+function conflictError(message) {
+  const error = new Error(message);
+  error.statusCode = 409;
+  return error;
+}
+
+function isValidDate(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value || "")) return false;
+  const date = new Date(`${value}T00:00:00Z`);
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
+
+function optionalTimestamp(value, field) {
+  if (value == null || value === "") return null;
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) throw clientError(`${field} must be a valid timestamp`);
+  return date.toISOString();
+}
+
+function validateLine(line, index) {
+  if (!line || typeof line !== "object") throw clientError(`Line ${index + 1} must be an object`);
+  const id = String(line.id || "").trim();
+  if (!id || id.length > 128) throw clientError(`Line ${index + 1} needs a valid ID`);
+
+  const normalized = { ...line, id };
+  ["machine", "shift", "item", "remark"].forEach((field) => {
+    if (normalized[field] != null) normalized[field] = String(normalized[field]);
+  });
+  ["cycleTime", "hours", "grammage", "kgPerBag", "actualBags"].forEach((field) => {
+    if (normalized[field] == null || normalized[field] === "") return;
+    const value = Number(normalized[field]);
+    if (!Number.isFinite(value) || value < 0) throw clientError(`Line ${index + 1} has an invalid ${field}`);
+    if (field === "hours" && value > 12) throw clientError(`Line ${index + 1} cannot exceed 12 hours per shift`);
+    normalized[field] = value;
+  });
+  if (normalized.cavity != null && normalized.cavity !== "") {
+    const cavity = Number(normalized.cavity);
+    if (!Number.isInteger(cavity) || cavity < 0) throw clientError(`Line ${index + 1} has an invalid cavity`);
+    normalized.cavity = cavity;
+  }
+  return normalized;
+}
+
+function validateSheet(sheet) {
+  if (!sheet || !isValidDate(sheet.date) || !Array.isArray(sheet.lines)) {
+    throw clientError("Invalid daily sheet");
+  }
+  if (sheet.lines.length > MAX_LINES_PER_SHEET) throw clientError(`A sheet may contain at most ${MAX_LINES_PER_SHEET} lines`);
+  const lines = sheet.lines.map(validateLine);
+  const ids = new Set(lines.map((line) => line.id));
+  if (ids.size !== lines.length) throw clientError("A sheet cannot contain duplicate line IDs");
+  return {
+    ...sheet,
+    date: sheet.date,
+    lines,
+    expectedUpdatedAt: optionalTimestamp(sheet.expectedUpdatedAt, "expectedUpdatedAt"),
+  };
+}
+
+function validateSheets(sheets) {
+  if (!Array.isArray(sheets) || !sheets.length || sheets.length > MAX_SHEETS_PER_IMPORT) {
+    throw clientError(`Import must contain 1 to ${MAX_SHEETS_PER_IMPORT} sheets`);
+  }
+  const normalized = sheets.map(validateSheet);
+  const dates = new Set(normalized.map((sheet) => sheet.date));
+  if (dates.size !== normalized.length) throw clientError("Import cannot contain duplicate dates");
+  return normalized;
+}
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -54,6 +131,87 @@ function lineToParams(line) {
     remark:      line.remark    || null,
     from_calc:   line._fromCalc || false,
   };
+}
+
+function saveSheetQuery(sql, sheet, timestamp) {
+  const { date, lines, expectedUpdatedAt } = sheet;
+  const params = lines.map(lineToParams);
+  const incomingIds = params.map((param) => param.id);
+
+  return sql`
+    WITH saved_sheet AS (
+      INSERT INTO production_sheets (sheet_date, tolerance, updated_at, source_app, source_version)
+      VALUES (
+        ${date}::date,
+        ${FIXED_TOLERANCE},
+        ${timestamp}::timestamptz,
+        ${SOURCE_APP},
+        4
+      )
+      ON CONFLICT (sheet_date) DO UPDATE SET
+        tolerance      = EXCLUDED.tolerance,
+        updated_at     = EXCLUDED.updated_at,
+        source_app     = EXCLUDED.source_app,
+        source_version = EXCLUDED.source_version
+      WHERE ${expectedUpdatedAt}::timestamptz IS NULL
+         OR production_sheets.updated_at = ${expectedUpdatedAt}::timestamptz
+      RETURNING id
+    ),
+    deleted_lines AS (
+      DELETE FROM production_lines
+      WHERE sheet_date = ${date}::date
+        AND NOT (id = ANY(${incomingIds}::text[]))
+        AND EXISTS (SELECT 1 FROM saved_sheet)
+    ),
+    saved_lines AS (
+      INSERT INTO production_lines (
+        id, sheet_id, sheet_date,
+        machine, shift, item,
+        cycle_time, cavity, hours, grammage, kg_per_bag, actual_bags,
+        remark, from_calc,
+        created_at, updated_at
+      )
+      SELECT
+        u.id, s.id, ${date}::date,
+        u.machine, u.shift, u.item,
+        u.cycle_time, u.cavity, u.hours, u.grammage, u.kg_per_bag, u.actual_bags,
+        u.remark, u.from_calc,
+        NOW(), NOW()
+      FROM UNNEST(
+        ${params.map((p) => p.id)}::text[],
+        ${params.map((p) => p.machine)}::text[],
+        ${params.map((p) => p.shift)}::text[],
+        ${params.map((p) => p.item)}::text[],
+        ${params.map((p) => p.cycle_time)}::numeric[],
+        ${params.map((p) => p.cavity)}::int[],
+        ${params.map((p) => p.hours)}::numeric[],
+        ${params.map((p) => p.grammage)}::numeric[],
+        ${params.map((p) => p.kg_per_bag)}::numeric[],
+        ${params.map((p) => p.actual_bags)}::numeric[],
+        ${params.map((p) => p.remark)}::text[],
+        ${params.map((p) => p.from_calc)}::boolean[]
+      ) AS u(id, machine, shift, item, cycle_time, cavity, hours, grammage, kg_per_bag, actual_bags, remark, from_calc)
+      CROSS JOIN saved_sheet s
+      ON CONFLICT (sheet_date, id) DO UPDATE SET
+        sheet_id    = EXCLUDED.sheet_id,
+        machine     = EXCLUDED.machine,
+        shift       = EXCLUDED.shift,
+        item        = EXCLUDED.item,
+        cycle_time  = EXCLUDED.cycle_time,
+        cavity      = EXCLUDED.cavity,
+        hours       = EXCLUDED.hours,
+        grammage    = EXCLUDED.grammage,
+        kg_per_bag  = EXCLUDED.kg_per_bag,
+        actual_bags = EXCLUDED.actual_bags,
+        remark      = EXCLUDED.remark,
+        from_calc   = EXCLUDED.from_calc,
+        updated_at  = NOW()
+      RETURNING id
+    )
+    SELECT
+      (SELECT id FROM saved_sheet) AS sheet_id,
+      (SELECT COUNT(*)::int FROM saved_lines) AS line_count
+  `;
 }
 
 function toDateString(value) {
@@ -183,92 +341,16 @@ async function getSheetsByDateRange(startDate, days) {
  */
 async function saveSheet(sheet) {
   const sql = getSql();
-  const { date, lines = [], updatedAt } = sheet;
-  const timestamp = updatedAt || new Date().toISOString();
-
-  const validLines = lines.filter((l) => l && l.id);
-  const incomingIds = validLines.map((l) => l.id);
-
-  const queries = [
-    sql`
-      INSERT INTO production_sheets (sheet_date, tolerance, updated_at, source_app, source_version)
-      VALUES (
-        ${date}::date,
-        ${FIXED_TOLERANCE},
-        ${timestamp}::timestamptz,
-        ${SOURCE_APP},
-        3
-      )
-      ON CONFLICT (sheet_date) DO UPDATE SET
-        tolerance      = EXCLUDED.tolerance,
-        updated_at     = EXCLUDED.updated_at,
-        source_app     = EXCLUDED.source_app,
-        source_version = EXCLUDED.source_version
-    `,
-    incomingIds.length > 0
-      ? sql`
-          DELETE FROM production_lines
-          WHERE sheet_date = ${date}::date
-            AND id <> ALL(${incomingIds})
-        `
-      : sql`DELETE FROM production_lines WHERE sheet_date = ${date}::date`,
-  ];
-
-  if (validLines.length > 0) {
-    const params = validLines.map(lineToParams);
-    queries.push(sql`
-      INSERT INTO production_lines (
-        id, sheet_id, sheet_date,
-        machine, shift, item,
-        cycle_time, cavity, hours, grammage, kg_per_bag, actual_bags,
-        remark, from_calc,
-        created_at, updated_at
-      )
-      SELECT
-        u.id,
-        (SELECT id FROM production_sheets WHERE sheet_date = ${date}::date),
-        ${date}::date,
-        u.machine, u.shift, u.item,
-        u.cycle_time, u.cavity, u.hours, u.grammage, u.kg_per_bag, u.actual_bags,
-        u.remark, u.from_calc,
-        NOW(), NOW()
-      FROM UNNEST(
-        ${params.map((p) => p.id)}::text[],
-        ${params.map((p) => p.machine)}::text[],
-        ${params.map((p) => p.shift)}::text[],
-        ${params.map((p) => p.item)}::text[],
-        ${params.map((p) => p.cycle_time)}::numeric[],
-        ${params.map((p) => p.cavity)}::int[],
-        ${params.map((p) => p.hours)}::numeric[],
-        ${params.map((p) => p.grammage)}::numeric[],
-        ${params.map((p) => p.kg_per_bag)}::numeric[],
-        ${params.map((p) => p.actual_bags)}::numeric[],
-        ${params.map((p) => p.remark)}::text[],
-        ${params.map((p) => p.from_calc)}::boolean[]
-      ) AS u(id, machine, shift, item, cycle_time, cavity, hours, grammage, kg_per_bag, actual_bags, remark, from_calc)
-      ON CONFLICT (id) DO UPDATE SET
-        sheet_id    = EXCLUDED.sheet_id,
-        sheet_date  = EXCLUDED.sheet_date,
-        machine     = EXCLUDED.machine,
-        shift       = EXCLUDED.shift,
-        item        = EXCLUDED.item,
-        cycle_time  = EXCLUDED.cycle_time,
-        cavity      = EXCLUDED.cavity,
-        hours       = EXCLUDED.hours,
-        grammage    = EXCLUDED.grammage,
-        kg_per_bag  = EXCLUDED.kg_per_bag,
-        actual_bags = EXCLUDED.actual_bags,
-        remark      = EXCLUDED.remark,
-        from_calc   = EXCLUDED.from_calc,
-        updated_at  = NOW()
-    `);
+  const normalized = validateSheet(sheet);
+  const timestamp = new Date().toISOString();
+  const result = await saveSheetQuery(sql, normalized, timestamp);
+  if (!result[0] || !result[0].sheet_id) {
+    throw conflictError("This sheet changed on another device. Reload it before saving.");
   }
 
-  await sql.transaction(queries);
-
   return {
-    date,
-    lines: validLines.map((l) => ({ ...l })),
+    date: normalized.date,
+    lines: normalized.lines.map((line) => ({ ...line })),
     tolerance: FIXED_TOLERANCE,
     updatedAt: timestamp,
   };
@@ -281,27 +363,17 @@ async function saveSheet(sheet) {
  * Returns: { sheets: [...], imported: N }
  */
 async function bulkSaveSheets(sheets) {
-  const byDate = new Map();
-  for (const sheet of sheets) byDate.set(sheet.date, sheet);
-  const uniqueSheets = Array.from(byDate.values());
-
-  const CONCURRENCY = 5;
-  const saved = [];
-
-  for (let i = 0; i < uniqueSheets.length; i += CONCURRENCY) {
-    const batch = uniqueSheets.slice(i, i + CONCURRENCY);
-    const results = await Promise.all(
-      batch.map((sheet) =>
-        saveSheet(sheet).catch((err) => {
-          console.error(`[production-db] Failed to save sheet ${sheet.date}:`, err.message);
-          return null;
-        })
-      )
-    );
-    saved.push(...results.filter(Boolean));
+  const normalized = validateSheets(sheets).map((sheet) => ({ ...sheet, expectedUpdatedAt: null }));
+  const sql = getSql();
+  const timestamp = new Date().toISOString();
+  const results = await sql.transaction(normalized.map((sheet) => saveSheetQuery(sql, sheet, timestamp)));
+  if (results.some((rows) => !rows[0] || !rows[0].sheet_id)) {
+    throw conflictError("Import could not be applied safely");
   }
-
-  return { sheets: saved, imported: saved.length };
+  return {
+    sheets: normalized.map((sheet) => ({ date: sheet.date, lines: sheet.lines.map((line) => ({ ...line })), tolerance: FIXED_TOLERANCE, updatedAt: timestamp })),
+    imported: normalized.length,
+  };
 }
 
 module.exports = {
@@ -309,4 +381,7 @@ module.exports = {
   getSheetsByDateRange,
   saveSheet,
   bulkSaveSheets,
+  isValidDate,
+  validateSheet,
+  validateSheets,
 };

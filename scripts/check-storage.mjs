@@ -94,6 +94,6 @@ const [{ sheets, lines }] = await sql`
 `;
 console.log(`  Sheets: ${sheets}   Lines: ${lines}`);
 console.log();
-console.log("  If dead-tuple counts are high, run: node scripts/apply-schema.mjs");
-console.log("  (it VACUUMs both tables as its final step).");
+console.log("  If dead-tuple counts are high, schedule VACUUM (ANALYZE) separately.");
+console.log("  Reserve VACUUM FULL for planned downtime because it blocks writers.");
 console.log();

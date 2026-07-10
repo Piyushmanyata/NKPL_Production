@@ -152,6 +152,76 @@
     return shiftFilter && shiftFilter !== "total" ? "Shift " + shiftFilter : "All shifts";
   }
 
+  var SHIFT_HOURS = 12;
+
+  function machineRoster(sheets, end) {
+    var names = new Set();
+    (Array.isArray(sheets) ? sheets : []).forEach(function (sheet) {
+      if (!sheet || !sheet.date || (end && sheet.date > end)) return;
+      (sheet && Array.isArray(sheet.lines) ? sheet.lines : []).forEach(function (line) {
+        if (!lineHasContent(line)) return;
+        var machine = normalizeMachineName(line.machine);
+        if (machine !== "Unassigned machine") names.add(machine);
+      });
+    });
+    return Array.from(names).sort(function (a, b) { return a.localeCompare(b, undefined, { numeric: true }); });
+  }
+
+  function latestSheetDate(sheets) {
+    return (Array.isArray(sheets) ? sheets : []).reduce(function (latest, sheet) {
+      return sheet && sheet.date && Array.isArray(sheet.lines) && sheet.lines.some(lineHasContent) && sheet.date > latest ? sheet.date : latest;
+    }, "");
+  }
+
+  function daysInclusive(start, end) {
+    if (!start || !end || end < start) return 0;
+    return Math.floor((Date.parse(end + "T00:00:00Z") - Date.parse(start + "T00:00:00Z")) / 86400000) + 1;
+  }
+
+  function applyUtilization(summary, start, end, shiftFilter, roster, asOf) {
+    var effectiveEnd = asOf && asOf < end ? asOf : end;
+    var periodDays = daysInclusive(start, effectiveEnd);
+    var expectedShifts = shiftFilter && shiftFilter !== "total" ? [shiftFilter] : ["A", "B"];
+    var availablePerMachine = periodDays * expectedShifts.length * SHIFT_HOURS;
+    var byMachine = new Map();
+    (summary.machines || []).forEach(function (machine) { byMachine.set(machine.label, machine); });
+    var names = roster && roster.length ? roster.slice() : Array.from(byMachine.keys());
+    var slots = new Map();
+    (summary.entriesList || []).forEach(function (entry) {
+      if (!entry.date || entry.date < start || entry.date > effectiveEnd || expectedShifts.indexOf(entry.shift) === -1) return;
+      var key = entry.machine + "\u0001" + entry.date + "\u0001" + entry.shift;
+      slots.set(key, (slots.get(key) || 0) + Math.max(0, Number.isFinite(entry.hours) ? entry.hours : 0));
+    });
+
+    summary.utilizationMachines = names.map(function (label) {
+      var machine = byMachine.get(label);
+      if (!machine) machine = finish(Object.assign({ label: label }, blankSummary()));
+      var machineSlots = Array.from(slots.entries()).filter(function (slot) { return slot[0].slice(0, label.length + 1) === label + "\u0001"; });
+      var recordedUnderutilizedHours = machineSlots.reduce(function (total, slot) { return total + Math.max(0, SHIFT_HOURS - Math.min(slot[1], SHIFT_HOURS)); }, 0);
+      var unloggedHours = Math.max(0, periodDays * expectedShifts.length - machineSlots.length) * SHIFT_HOURS;
+      machine.availableHours = availablePerMachine;
+      machine.recordedUnderutilizedHours = recordedUnderutilizedHours;
+      machine.unloggedHours = unloggedHours;
+      machine.underutilizedHours = recordedUnderutilizedHours + unloggedHours;
+      machine.utilizationPct = availablePerMachine ? Math.max(0, Math.min(100, (availablePerMachine - machine.underutilizedHours) / availablePerMachine * 100)) : null;
+      machine.utilizationStatus = !machineSlots.length ? "unlogged" : unloggedHours ? "partial" : "logged";
+      return machine;
+    }).sort(function (a, b) {
+      return b.underutilizedHours - a.underutilizedHours || a.label.localeCompare(b.label, undefined, { numeric: true });
+    });
+
+    summary.availableHours = summary.utilizationMachines.reduce(function (total, machine) { return total + machine.availableHours; }, 0);
+    summary.underutilizedHours = summary.utilizationMachines.reduce(function (total, machine) { return total + machine.underutilizedHours; }, 0);
+    summary.recordedUnderutilizedHours = summary.utilizationMachines.reduce(function (total, machine) { return total + machine.recordedUnderutilizedHours; }, 0);
+    summary.unloggedHours = summary.utilizationMachines.reduce(function (total, machine) { return total + machine.unloggedHours; }, 0);
+    summary.utilizationPct = summary.availableHours ? Math.max(0, Math.min(100, (summary.availableHours - summary.underutilizedHours) / summary.availableHours * 100)) : null;
+    summary.utilizationPeriodDays = periodDays;
+    summary.utilizationAsOf = effectiveEnd;
+    summary.utilizationNote = "12 hr per shift / 24 hr per day baseline through " + formatDate(effectiveEnd) + "; potential underutilization separates recorded gaps from unlogged time, not confirmed downtime.";
+    summary.machineInsights = machineInsights(summary);
+    return summary;
+  }
+
   function computeLine(line, tolerance) {
     var cycleTime = num(line.cycleTime);
     var cavity = num(line.cavity);
@@ -159,16 +229,21 @@
     var grammage = num(line.grammage);
     var kgPerBag = num(line.kgPerBag);
     var actualBags = num(line.actualBags);
-    var targetPieces = cycleTime > 0 && cavity != null && hours != null
+    if (cavity != null && cavity < 0) cavity = null;
+    if (hours != null && hours < 0) hours = null;
+    if (grammage != null && grammage < 0) grammage = null;
+    if (kgPerBag != null && kgPerBag < 0) kgPerBag = null;
+    if (actualBags != null && actualBags < 0) actualBags = null;
+    var targetPieces = cycleTime > 0 && cavity > 0 && hours > 0
       ? 3600 / cycleTime * cavity * hours
       : null;
-    var targetKg = targetPieces != null && grammage != null
+    var targetKg = targetPieces != null && grammage > 0
       ? targetPieces * grammage / 1000
       : null;
     var targetBags = targetKg != null && kgPerBag > 0
       ? targetKg / kgPerBag
       : null;
-    var actualKg = actualBags != null && kgPerBag != null
+    var actualKg = actualBags != null && kgPerBag > 0
       ? actualBags * kgPerBag
       : null;
     var actualPieces = actualKg != null && grammage > 0
@@ -189,6 +264,7 @@
       id: line.id || "",
       date: line.date || "",
       machine: normalizeMachineName(line.machine),
+      shift: String(line.shift || "A").trim().toUpperCase(),
       item: String(line.item || "").trim() || "Unspecified item",
       remark: String(line.remark || "").trim(),
       cycleTime: cycleTime,
@@ -317,7 +393,7 @@
   }
 
   function machineInsights(summary) {
-    var machines = summary.machines || [];
+    var machines = (summary.machines || []).filter(function (machine) { return machine.entries; });
     if (!machines.length) return [];
     var topOutput = machines[0];
     var topRuntime = machines.slice().sort(function (a, b) { return b.runHours - a.runHours; })[0];
@@ -544,20 +620,21 @@
     return totals;
   }
 
-  function summarizeSheet(sheet, shiftFilter) {
+  function summarizeSheet(sheet, shiftFilter, rosterSheets) {
     var lines = sheet && sheet.lines || [];
     if (shiftFilter && shiftFilter !== "total") {
       lines = lines.filter(function (l) {
         return (l.shift || "A") === shiftFilter;
       });
     }
+    lines = lines.map(function (line) { return Object.assign({}, line, { date: sheet && sheet.date || "" }); });
     var totals = summarizeLines(lines, 5);
     totals.date = sheet && sheet.date || "";
     totals.shiftLabel = shiftLabel(shiftFilter);
     totals.title = "Daily production report";
     totals.subtitle = formatDate(totals.date);
     totals.dayCount = totals.entries ? 1 : 0;
-    return totals;
+    return applyUtilization(totals, totals.date, totals.date, shiftFilter, machineRoster(rosterSheets || [sheet], totals.date), latestSheetDate(rosterSheets || [sheet]));
   }
 
   function summarizeWeek(sheets, start, shiftFilter) {
@@ -596,6 +673,7 @@
     totals.title = "Weekly production report";
     totals.subtitle = formatDate(start) + " to " + formatDate(totals.end);
     totals.mouldAnalysis = computeMouldAnalysis(sheets, start, totals.end, shiftFilter);
+    applyUtilization(totals, totals.start, totals.end, shiftFilter, machineRoster(sheets, latestSheetDate(sheets) && latestSheetDate(sheets) < totals.end ? latestSheetDate(sheets) : totals.end), latestSheetDate(sheets));
     
     var activeWeekSheets = weekSheets.filter(function (sheet) {
       return sheet.lines.some(function (l) {
@@ -649,6 +727,7 @@
     var dateObj = new Date(start + "T12:00:00");
     totals.subtitle = dateObj.toLocaleDateString("en-US", { month: "long", year: "numeric" });
     totals.mouldAnalysis = computeMouldAnalysis(sheets, start, totals.end, shiftFilter);
+    applyUtilization(totals, totals.start, totals.end, shiftFilter, machineRoster(sheets, latestSheetDate(sheets) && latestSheetDate(sheets) < totals.end ? latestSheetDate(sheets) : totals.end), latestSheetDate(sheets));
     
     var activeMonthSheets = monthSheets.filter(function (sheet) {
       return sheet.lines.some(function (l) {
@@ -691,6 +770,7 @@
     return [
       kpi("Target attainment", summary.efficiency == null ? "-" : fmt(summary.efficiency, 1) + "%", signed(summary.varianceKg, 1) + " kg vs plan", efficiencyTone),
       kpi("Machine runtime", fmt(summary.runHours, 1) + " hr", fmt(summary.machineCount, 0) + " machine(s) logged", ""),
+      kpi("Potentially underutilized", summary.utilizationPct == null ? "-" : fmt(summary.underutilizedHours, 1) + " hr", summary.utilizationPct == null ? "No capacity assessment" : fmt(summary.utilizationPct, 1) + "% of modeled capacity used", summary.underutilizedHours ? "negative" : "positive"),
       kpi("Product coverage", fmt(summary.itemCount, 0) + " types", fmt(summary.entries, 0) + " production run(s)", ""),
       kpi("Needs action", fmt(summary.flagged + summary.shortRuns.length, 0), fmt(summary.flagged, 0) + " off-target / " + fmt(summary.shortRuns.length, 0) + " short run(s)", summary.flagged || summary.shortRuns.length ? "negative" : "positive")
     ].join("");
@@ -711,16 +791,21 @@
   }
 
   function machineRows(summary) {
-    return summary.machines.map(function (machine) {
+    return (summary.utilizationMachines || summary.machines).map(function (machine) {
       return [
         esc(machine.label),
         esc(fmt(machine.entries, 0)),
         esc(fmt(machine.runHours, 1)),
-        esc(fmt(machine.actualBags, 0)),
+        esc(fmt(machine.availableHours, 1)),
+        esc(machine.utilizationPct == null ? "-" : fmt(machine.utilizationPct, 1) + "%"),
+        esc(fmt(machine.underutilizedHours, 1)),
+        esc(fmt(machine.recordedUnderutilizedHours, 1)),
+        esc(fmt(machine.unloggedHours, 1)),
         esc(fmt(machine.actualKg, 1)),
         esc(machine.kgPerHour == null ? "-" : fmt(machine.kgPerHour, 1)),
         esc(machine.efficiency == null ? "-" : fmt(machine.efficiency, 1) + "%"),
-        esc(fmt(summary.entriesList.filter(function (entry) { return entry.machine === machine.label && entry.hours != null && entry.hours < 5; }).length, 0))
+        esc(fmt(summary.entriesList.filter(function (entry) { return entry.machine === machine.label && entry.hours != null && entry.hours < 5; }).length, 0)),
+        esc(machine.utilizationStatus === "unlogged" ? "Unlogged" : machine.utilizationStatus === "partial" ? "Partial" : "Logged")
       ];
     });
   }
@@ -969,7 +1054,8 @@
       table(["Item / type", "Runs", "Run hr", "Bags", "Actual kg", "Output share", "Attainment"], itemRows(summary), "No item breakdown.") +
       "</section>" +
       '<section class="report-block machine-section"><div class="section-heading"><div><span class="eyebrow">Utilization</span><h3>Machine performance</h3></div></div>' +
-      table(["Machine / line", "Runs", "Run hr", "Bags", "Actual kg", "Kg / hr", "Attainment", "Short runs"], machineRows(summary), "No machine breakdown.") +
+      '<p class="section-note">' + esc(summary.utilizationNote || "Runtime only; no capacity baseline available.") + '</p>' +
+      table(["Machine / line", "Runs", "Run hr", "Available hr", "Utilization", "Potentially underutilized hr", "Recorded gap hr", "Unlogged hr", "Actual kg", "Kg / hr", "Attainment", "Short runs", "Data"], machineRows(summary), "No machine breakdown.") +
       "</section>" +
       machineProductSection +
       mouldChangeSection +

@@ -52,7 +52,7 @@ const sql = neon(DATABASE_URL);
 
 function rowToLine(row) {
   return {
-    id:         row.id,
+    id:         row.line_id,
     machine:    row.machine    || "",
     shift:      row.shift      || "A",
     item:       row.item       || "",
@@ -62,8 +62,10 @@ function rowToLine(row) {
     grammage:   row.grammage    != null ? Number(row.grammage)    : "",
     kgPerBag:   row.kg_per_bag  != null ? Number(row.kg_per_bag)  : "",
     actualBags: row.actual_bags != null ? Number(row.actual_bags) : "",
-    remark:     row.remark     || "",
+    remark:     row.remark == null ? null : row.remark,
     _fromCalc:  row.from_calc  || false,
+    createdAt:  row.line_created_at || null,
+    updatedAt:  row.line_updated_at || null,
   };
 }
 
@@ -71,35 +73,47 @@ console.log("━━━━━━━━━━━━━━━━━━━━━━�
 console.log("  NKPL Production — Postgres Backup");
 console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
-// sheet_date is cast to ::text so we get a plain "YYYY-MM-DD" string —
-// Postgres DATE columns have no timezone, and the driver's default Date
-// parsing shifts them to the wrong calendar day outside a UTC process.
-const sheets = await sql`SELECT id, sheet_date::text AS sheet_date, tolerance, updated_at, source_app, source_version FROM production_sheets ORDER BY sheet_date`;
-const sheetIds = sheets.map((s) => s.id);
-const lines = sheetIds.length
-  ? await sql`SELECT * FROM production_lines WHERE sheet_id = ANY(${sheetIds}) ORDER BY sheet_date, created_at`
-  : [];
+// One joined statement gives one database snapshot. Separate sheet/line reads
+// can miss a row created between requests and cannot support exact recovery.
+const rows = await sql`
+  SELECT
+    s.sheet_date::text AS sheet_date, s.tolerance,
+    s.updated_at::text AS sheet_updated_at, s.created_at::text AS sheet_created_at,
+    s.source_app, s.source_version,
+    l.id AS line_id, l.machine, l.shift, l.item,
+    l.cycle_time, l.cavity, l.hours, l.grammage, l.kg_per_bag, l.actual_bags,
+    l.remark, l.from_calc,
+    l.created_at::text AS line_created_at, l.updated_at::text AS line_updated_at
+  FROM production_sheets s
+  LEFT JOIN production_lines l ON l.sheet_id = s.id
+  ORDER BY s.sheet_date, l.created_at, l.id
+`;
 
-const linesBySheet = {};
-for (const line of lines) {
-  const sid = String(line.sheet_id);
-  if (!linesBySheet[sid]) linesBySheet[sid] = [];
-  linesBySheet[sid].push(line);
+const byDate = new Map();
+for (const row of rows) {
+  if (!byDate.has(row.sheet_date)) {
+    byDate.set(row.sheet_date, {
+      date: row.sheet_date,
+      lines: [],
+      tolerance: row.tolerance == null ? 1.5 : Number(row.tolerance),
+      updatedAt: row.sheet_updated_at || null,
+      createdAt: row.sheet_created_at || null,
+      sourceApp: row.source_app || null,
+      sourceVersion: row.source_version == null ? null : Number(row.source_version),
+    });
+  }
+  if (row.line_id != null) byDate.get(row.sheet_date).lines.push(rowToLine(row));
 }
 
-const backupSheets = sheets.map((s) => ({
-  date:      s.sheet_date,
-  lines:     (linesBySheet[String(s.id)] || []).map(rowToLine),
-  tolerance: Number(s.tolerance) || 1.5,
-  updatedAt: s.updated_at ? new Date(s.updated_at).toISOString() : null,
-}));
+const backupSheets = Array.from(byDate.values());
 
 const now = new Date();
 const ts = now.toISOString().replace("T", "-").replace(/:/g, "").slice(0, 15);
 
 const backup = {
   app:        "nkpl-production",
-  version:    3,
+  version:    4,
+  format:     "raw-v1",
   exportedAt: now.toISOString(),
   source:     "postgres",
   sheets:     backupSheets,

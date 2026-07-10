@@ -1,0 +1,402 @@
+{
+  "communities": {
+    "0": [
+      "assets_app",
+      "assets_app_bagsformula",
+      "assets_app_calculate",
+      "assets_app_classify",
+      "assets_app_clearautologtimer",
+      "assets_app_clearoutputs",
+      "assets_app_cloneline",
+      "assets_app_completerun",
+      "assets_app_computeline",
+      "assets_app_emptyline",
+      "assets_app_fmt",
+      "assets_app_focuscalculator",
+      "assets_app_getactiveshiftfilter",
+      "assets_app_itemname",
+      "assets_app_loadlocal",
+      "assets_app_localindexkey",
+      "assets_app_locallineskey",
+      "assets_app_makelogkey",
+      "assets_app_nextmachinename",
+      "assets_app_num",
+      "assets_app_openimportpicker",
+      "assets_app_parsestoredsheet",
+      "assets_app_piecesformula",
+      "assets_app_printreport",
+      "assets_app_readlocalindex",
+      "assets_app_readychartsforprint",
+      "assets_app_rememberlocalsheet",
+      "assets_app_render",
+      "assets_app_reset",
+      "assets_app_resetitem",
+      "assets_app_resetlogbtn",
+      "assets_app_save",
+      "assets_app_sheetkey",
+      "assets_app_showmsg",
+      "assets_app_statusword",
+      "assets_app_submitreasonandreturntocalculator",
+      "assets_app_syncitemgrammage",
+      "assets_app_trylognow",
+      "assets_app_uid",
+      "assets_app_updateall",
+      "assets_app_updatelinedom",
+      "assets_app_updateprintsub",
+      "assets_app_writelocalindex"
+    ],
+    "1": [
+      "assets_analytics",
+      "assets_analytics_add",
+      "assets_analytics_blanksummary",
+      "assets_analytics_computeline",
+      "assets_analytics_computemouldanalysis",
+      "assets_analytics_dayrows",
+      "assets_analytics_distinctitemsformachine",
+      "assets_analytics_esc",
+      "assets_analytics_finish",
+      "assets_analytics_firstremarks",
+      "assets_analytics_fmt",
+      "assets_analytics_formatdate",
+      "assets_analytics_grouped",
+      "assets_analytics_groupedpair",
+      "assets_analytics_insightcards",
+      "assets_analytics_itemrows",
+      "assets_analytics_kpi",
+      "assets_analytics_linehascontent",
+      "assets_analytics_localdateiso",
+      "assets_analytics_machineinsights",
+      "assets_analytics_machineproductrows",
+      "assets_analytics_machinerows",
+      "assets_analytics_monthstart",
+      "assets_analytics_mouldchangerows",
+      "assets_analytics_normalizeitemname",
+      "assets_analytics_normalizemachinename",
+      "assets_analytics_num",
+      "assets_analytics_reporthtml",
+      "assets_analytics_shiftlabel",
+      "assets_analytics_signed",
+      "assets_analytics_statusword",
+      "assets_analytics_summarizelines",
+      "assets_analytics_summarizemonth",
+      "assets_analytics_summarizesheet",
+      "assets_analytics_summarizeweek",
+      "assets_analytics_summarykpis",
+      "assets_analytics_table",
+      "assets_analytics_weekstart"
+    ],
+    "2": [
+      "assets_app_buildlocalhistorysheets",
+      "assets_app_changeloggingdate",
+      "assets_app_csvcell",
+      "assets_app_currentsheetpayload",
+      "assets_app_destroycharts",
+      "assets_app_downloadcsv",
+      "assets_app_downloadjson",
+      "assets_app_exportbackup",
+      "assets_app_exportmonthlycsv",
+      "assets_app_exportweeklycsv",
+      "assets_app_fetchremotehistory",
+      "assets_app_importbackupfromfile",
+      "assets_app_initcharts",
+      "assets_app_linehascontent",
+      "assets_app_loadremote",
+      "assets_app_mergehistorysheets",
+      "assets_app_normalizebackupsheets",
+      "assets_app_normalizelines",
+      "assets_app_refreshhistory",
+      "assets_app_refreshhistoryfromlocal",
+      "assets_app_renderdailyreport",
+      "assets_app_renderhistory",
+      "assets_app_rendermonthlyreport",
+      "assets_app_renderweeklyreport",
+      "assets_app_selectedmonthsheets",
+      "assets_app_selectedweeksheets",
+      "assets_app_setsync",
+      "assets_app_setview",
+      "assets_app_sheetfordate",
+      "assets_app_sheethascontent",
+      "assets_app_sheetswithcurrent",
+      "assets_app_syncremote",
+      "assets_app_tol",
+      "assets_app_weekstart",
+      "assets_app_yesterdayiso"
+    ],
+    "3": [
+      "api_lib_neon",
+      "api_lib_neon_getsql",
+      "api_lib_neon_neon",
+      "api_lib_neon_ping",
+      "api_lib_production_db",
+      "api_lib_production_db_builddaterange",
+      "api_lib_production_db_bulksavesheets",
+      "api_lib_production_db_getallsheets",
+      "api_lib_production_db_getsheetsbydaterange",
+      "api_lib_production_db_getsql",
+      "api_lib_production_db_groupjoinedrows",
+      "api_lib_production_db_linetoparams",
+      "api_lib_production_db_rowtoline",
+      "api_lib_production_db_savesheet",
+      "api_lib_production_db_todatestring",
+      "api_lib_production_db_toisostring",
+      "api_production",
+      "api_production_getdb",
+      "api_production_validdate"
+    ],
+    "4": [
+      "scripts_backup_postgres",
+      "scripts_backup_postgres_backup",
+      "scripts_backup_postgres_backupsheets",
+      "scripts_backup_postgres_datadir",
+      "scripts_backup_postgres_dirname",
+      "scripts_backup_postgres_filepath",
+      "scripts_backup_postgres_filesizekb",
+      "scripts_backup_postgres_linesbysheet",
+      "scripts_backup_postgres_now",
+      "scripts_backup_postgres_root",
+      "scripts_backup_postgres_rowtoline",
+      "scripts_backup_postgres_sheetids",
+      "scripts_backup_postgres_sql",
+      "scripts_backup_postgres_totallines",
+      "scripts_backup_postgres_ts"
+    ],
+    "5": [
+      "scripts_verify_backup",
+      "scripts_verify_backup_alldates",
+      "scripts_verify_backup_dirname",
+      "scripts_verify_backup_displayurl",
+      "scripts_verify_backup_divider",
+      "scripts_verify_backup_haslinecontent",
+      "scripts_verify_backup_jsonallsheets",
+      "scripts_verify_backup_jsoncontentsheets",
+      "scripts_verify_backup_jsondatemap",
+      "scripts_verify_backup_jsontotallines",
+      "scripts_verify_backup_n",
+      "scripts_verify_backup_pgdatemap",
+      "scripts_verify_backup_root",
+      "scripts_verify_backup_row",
+      "scripts_verify_backup_sql"
+    ],
+    "6": [
+      "package",
+      "package_dependencies",
+      "package_dependencies_neondatabase_serverless",
+      "package_description",
+      "package_name",
+      "package_private",
+      "package_scripts",
+      "package_scripts_db_backup",
+      "package_scripts_db_restore",
+      "package_scripts_db_schema",
+      "package_scripts_db_verify",
+      "package_version"
+    ],
+    "7": [
+      "scripts_restore_backup",
+      "scripts_restore_backup_dirname",
+      "scripts_restore_backup_displayurl",
+      "scripts_restore_backup_errors",
+      "scripts_restore_backup_haslinecontent",
+      "scripts_restore_backup_n",
+      "scripts_restore_backup_root",
+      "scripts_restore_backup_sql",
+      "scripts_restore_backup_validdate"
+    ],
+    "8": [
+      "scripts_apply_schema",
+      "scripts_apply_schema_dirname",
+      "scripts_apply_schema_displayurl",
+      "scripts_apply_schema_exec",
+      "scripts_apply_schema_root",
+      "scripts_apply_schema_schemasql",
+      "scripts_apply_schema_sql",
+      "scripts_apply_schema_track"
+    ],
+    "9": [
+      "scratch_list_items",
+      "scratch_list_items_data",
+      "scratch_list_items_file1",
+      "scratch_list_items_fs",
+      "scratch_list_items_items",
+      "scratch_list_items_path",
+      "scratch_list_items_sorted"
+    ],
+    "10": [
+      "scripts_neon_storage_settings",
+      "scripts_neon_storage_settings_allprojects",
+      "scripts_neon_storage_settings_args",
+      "scripts_neon_storage_settings_dirname",
+      "scripts_neon_storage_settings_headers",
+      "scripts_neon_storage_settings_root",
+      "scripts_neon_storage_settings_setidx"
+    ],
+    "11": [
+      "scratch_test_normalization",
+      "scratch_test_normalization_fs",
+      "scratch_test_normalization_normalizeitemname",
+      "scratch_test_normalization_path",
+      "scratch_test_normalization_testcases"
+    ],
+    "12": [
+      "scratch_check_charts",
+      "scratch_check_charts_edgeprocess",
+      "scratch_check_charts_exec",
+      "scratch_check_charts_http"
+    ],
+    "13": [
+      "scratch_dump_weekly_report",
+      "scratch_dump_weekly_report_edgeprocess",
+      "scratch_dump_weekly_report_exec",
+      "scratch_dump_weekly_report_http"
+    ],
+    "14": [
+      "scripts_check_storage",
+      "scripts_check_storage_dirname",
+      "scripts_check_storage_root",
+      "scripts_check_storage_sql"
+    ],
+    "15": [
+      "vercel",
+      "vercel_api_production_js_maxduration",
+      "vercel_functions",
+      "vercel_functions_api_production_js"
+    ],
+    "16": [
+      "scratch_read_backup",
+      "scratch_read_backup_fs"
+    ]
+  },
+  "cohesion": {
+    "0": 0.10741971207087486,
+    "1": 0.16358463726884778,
+    "2": 0.146218487394958,
+    "3": 0.1871345029239766,
+    "4": 0.13333333333333333,
+    "5": 0.13333333333333333,
+    "6": 0.16666666666666666,
+    "7": 0.2222222222222222,
+    "8": 0.25,
+    "9": 0.2857142857142857,
+    "10": 0.2857142857142857,
+    "11": 0.4,
+    "12": 0.5,
+    "13": 0.5,
+    "14": 0.5,
+    "15": 0.5,
+    "16": 1.0
+  },
+  "gods": [
+    {
+      "id": "assets_analytics_reporthtml",
+      "label": "reportHtml()",
+      "degree": 15
+    },
+    {
+      "id": "assets_app_calculate",
+      "label": "calculate()",
+      "degree": 13
+    },
+    {
+      "id": "assets_analytics_summarizelines",
+      "label": "summarizeLines()",
+      "degree": 12
+    },
+    {
+      "id": "assets_app_sheethascontent",
+      "label": "sheetHasContent()",
+      "degree": 12
+    },
+    {
+      "id": "assets_app_renderhistory",
+      "label": "renderHistory()",
+      "degree": 12
+    },
+    {
+      "id": "assets_analytics_fmt",
+      "label": "fmt()",
+      "degree": 11
+    },
+    {
+      "id": "assets_app_loadremote",
+      "label": "loadRemote()",
+      "degree": 11
+    },
+    {
+      "id": "assets_analytics_esc",
+      "label": "esc()",
+      "degree": 10
+    },
+    {
+      "id": "assets_app_currentsheetpayload",
+      "label": "currentSheetPayload()",
+      "degree": 10
+    },
+    {
+      "id": "assets_app_importbackupfromfile",
+      "label": "importBackupFromFile()",
+      "degree": 10
+    }
+  ],
+  "surprises": [
+    {
+      "source": "getAllSheets()",
+      "target": "getSql()",
+      "source_files": [
+        "api/lib/production-db.js",
+        "api/lib/neon.js"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "calls",
+      "why": "cross-file semantic connection"
+    },
+    {
+      "source": "getSheetsByDateRange()",
+      "target": "getSql()",
+      "source_files": [
+        "api/lib/production-db.js",
+        "api/lib/neon.js"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "calls",
+      "why": "cross-file semantic connection"
+    },
+    {
+      "source": "saveSheet()",
+      "target": "getSql()",
+      "source_files": [
+        "api/lib/production-db.js",
+        "api/lib/neon.js"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "calls",
+      "why": "cross-file semantic connection"
+    }
+  ],
+  "questions": [
+    {
+      "type": "isolated_nodes",
+      "question": "What connects `{ neon }`, `{ getSql }`, `name` to the rest of the system?",
+      "why": "70 weakly-connected nodes found - possible documentation gaps or missing edges."
+    },
+    {
+      "type": "low_cohesion",
+      "question": "Should `Community 0` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.10741971207087486 - nodes in this community are weakly interconnected."
+    },
+    {
+      "type": "low_cohesion",
+      "question": "Should `Community 2` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.146218487394958 - nodes in this community are weakly interconnected."
+    },
+    {
+      "type": "low_cohesion",
+      "question": "Should `Community 4` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.13333333333333333 - nodes in this community are weakly interconnected."
+    },
+    {
+      "type": "low_cohesion",
+      "question": "Should `Community 5` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.13333333333333333 - nodes in this community are weakly interconnected."
+    }
+  ]
+}

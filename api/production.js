@@ -10,10 +10,6 @@
 const FIXED_TOLERANCE = 1.5;
 const MAX_RANGE_DAYS = 31;
 
-function validDate(value) {
-  return /^\d{4}-\d{2}-\d{2}$/.test(value || "");
-}
-
 let _db = null;
 function getDb() {
   if (!_db) _db = require("./lib/production-db");
@@ -40,7 +36,7 @@ module.exports = async function handler(req, res) {
 
       const start = req.query.start || req.query.date;
       const days  = Math.min(Math.max(Number(req.query.days) || 1, 1), MAX_RANGE_DAYS);
-      if (!validDate(start)) return res.status(400).json({ error: "A valid date is required" });
+      if (!getDb().isValidDate(start)) return res.status(400).json({ error: "A valid date is required" });
 
       const sheets = await getDb().getSheetsByDateRange(start, days);
       return res.json({ sheets });
@@ -48,17 +44,8 @@ module.exports = async function handler(req, res) {
 
     // ── PUT (save one sheet) ──────────────────────────────────────────────
     if (req.method === "PUT") {
-      const { date, lines } = req.body || {};
-      if (!validDate(date) || !Array.isArray(lines)) {
-        return res.status(400).json({ error: "Invalid daily sheet" });
-      }
-
-      const sheet = {
-        date,
-        lines,
-        tolerance: FIXED_TOLERANCE,
-        updatedAt: new Date().toISOString(),
-      };
+      const { date, lines, expectedUpdatedAt } = req.body || {};
+      const sheet = { date, lines, expectedUpdatedAt, tolerance: FIXED_TOLERANCE };
 
       const savedSheet = await getDb().saveSheet(sheet);
       return res.json(savedSheet);
@@ -67,18 +54,7 @@ module.exports = async function handler(req, res) {
     // ── POST (bulk import / restore backup) ────────────────────────────────
     if (req.method === "POST") {
       const { sheets } = req.body || {};
-      if (!Array.isArray(sheets)) return res.status(400).json({ error: "Invalid backup payload" });
-
-      const cleaned = sheets
-        .filter((s) => s && validDate(s.date) && Array.isArray(s.lines))
-        .map((s) => ({
-          date:      s.date,
-          lines:     s.lines,
-          tolerance: FIXED_TOLERANCE,
-          updatedAt: s.updatedAt || new Date().toISOString(),
-        }));
-
-      const result = await getDb().bulkSaveSheets(cleaned);
+      const result = await getDb().bulkSaveSheets(sheets);
       return res.json({ sheets: result.sheets, imported: result.imported });
     }
 
@@ -86,6 +62,7 @@ module.exports = async function handler(req, res) {
 
   } catch (error) {
     console.error("[api/production] Unhandled error:", error.message);
-    return res.status(503).json({ error: error.message });
+    const status = error.statusCode || 503;
+    return res.status(status).json({ error: status >= 500 ? "Service unavailable" : error.message });
   }
 };

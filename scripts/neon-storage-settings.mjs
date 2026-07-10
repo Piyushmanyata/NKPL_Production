@@ -16,7 +16,7 @@
  *
  * Usage:
  *   node scripts/neon-storage-settings.mjs                 # show current settings
- *   node scripts/neon-storage-settings.mjs --set-retention 0
+ *   node scripts/neon-storage-settings.mjs --set-retention 0 --project <project-id> --confirm
  *
  * Requires:
  *   NEON_API_KEY in .env.local or environment
@@ -59,17 +59,35 @@ const headers = { Authorization: `Bearer ${NEON_API_KEY}`, "Content-Type": "appl
 const args = process.argv.slice(2);
 const setIdx = args.indexOf("--set-retention");
 const newRetention = setIdx !== -1 ? Number(args[setIdx + 1]) : null;
+const projectIdx = args.indexOf("--project");
+const projectSelector = projectIdx !== -1 ? args[projectIdx + 1] : process.env.NEON_PROJECT_ID;
+const confirmed = args.includes("--confirm");
+
+if (setIdx !== -1 && (!Number.isInteger(newRetention) || newRetention < 0)) {
+  console.error("❌  --set-retention must be a non-negative integer number of seconds.");
+  process.exit(1);
+}
+if (setIdx !== -1 && !projectSelector) {
+  console.error("❌  Mutating retention requires --project <project-id> (or NEON_PROJECT_ID).");
+  process.exit(1);
+}
+if (setIdx !== -1 && !confirmed) {
+  console.error("❌  Retention changes require --confirm after reviewing the selected project.");
+  process.exit(1);
+}
 
 console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 console.log("  NKPL Production — Neon Storage Settings");
 console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
 const orgsRes = await fetch(`${API}/users/me/organizations`, { headers });
+if (!orgsRes.ok) throw new Error(`Unable to list Neon organizations (${orgsRes.status})`);
 const { organizations } = await orgsRes.json();
 
 let allProjects = [];
 for (const org of organizations || []) {
   const projRes = await fetch(`${API}/projects?org_id=${org.id}`, { headers });
+  if (!projRes.ok) throw new Error(`Unable to list projects for ${org.name} (${projRes.status})`);
   const body = await projRes.json();
   for (const p of body.projects || []) allProjects.push({ ...p, orgName: org.name });
 }
@@ -79,9 +97,22 @@ if (!allProjects.length) {
   process.exit(1);
 }
 
-for (const summary of allProjects) {
+const selectedProjects = projectSelector
+  ? allProjects.filter((project) => project.id === projectSelector || project.name === projectSelector)
+  : allProjects;
+if (!selectedProjects.length) {
+  console.error(`❌  No Neon project matches ${JSON.stringify(projectSelector)}.`);
+  process.exit(1);
+}
+if (setIdx !== -1 && selectedProjects.length !== 1) {
+  console.error("❌  --project must identify exactly one project; use its project ID, not an ambiguous name.");
+  process.exit(1);
+}
+
+for (const summary of selectedProjects) {
   // The list endpoint omits history_retention_seconds; fetch full detail.
   const detailRes = await fetch(`${API}/projects/${summary.id}`, { headers });
+  if (!detailRes.ok) throw new Error(`Unable to read project ${summary.id} (${detailRes.status})`);
   const { project: p } = await detailRes.json();
   p.orgName = summary.orgName;
 
@@ -94,6 +125,7 @@ for (const summary of allProjects) {
       headers,
       body: JSON.stringify({ project: { history_retention_seconds: newRetention } }),
     });
+    if (!patchRes.ok) throw new Error(`Unable to update project ${p.id} (${patchRes.status})`);
     const patched = await patchRes.json();
     if (patched.project) {
       console.log(`    -> updated to ${patched.project.history_retention_seconds}s`);

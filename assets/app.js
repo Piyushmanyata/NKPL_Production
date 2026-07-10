@@ -154,8 +154,11 @@
         v[id] = parseFloat(raw); if (isNaN(v[id])) missing = true;
       });
       if (missing) { showMsg(anyFilled ? "Fill in the production parameters to see the target." : ""); clearOutputs(); return; }
-      if (v.cycleTime <= 0) { showMsg("Cycle time must be greater than 0."); clearOutputs(); return; }
-      if (v.kgPerBag <= 0) { showMsg("Weight per bag must be greater than 0."); clearOutputs(); return; }
+      if (v.cycleTime <= 0 || v.cavity <= 0 || v.hours <= 0 || v.grammage <= 0 || v.kgPerBag <= 0) {
+        showMsg("Cycle time, cavity, run hours, grammage and bag weight must be greater than 0.");
+        clearOutputs();
+        return;
+      }
       showMsg("");
 
       var bags = bagsFormula(v.cycleTime, v.cavity, v.hours, v.grammage, v.kgPerBag);
@@ -243,6 +246,11 @@
     var phSub      = document.getElementById("phSub");
     var syncState  = document.getElementById("syncState");
     var syncTimer = null;
+    var syncQueue = Promise.resolve();
+    var loadRequest = 0;
+    var localRevision = 0;
+    var remoteUpdatedAt = null;
+    var activeSheetUpdatedAt = null;
     var activeDate = "";
     var historySheets = [];
     var selectedDailyDate = "";
@@ -278,7 +286,7 @@
         date: date || activeDate || dateEl.value,
         lines: normalizeLines(lines),
         tolerance: tol(),
-        updatedAt: new Date().toISOString()
+        updatedAt: activeSheetUpdatedAt || null
       };
     }
     function parseStoredSheet(raw) {
@@ -341,6 +349,8 @@
     function setSync(text, state) { syncState.textContent = text; syncState.className = "sync-state " + (state || ""); }
 
     function save() {
+      activeSheetUpdatedAt = new Date().toISOString();
+      localRevision += 1;
       var sheet = currentSheetPayload(activeDate);
       try {
         localStorage.setItem(localLinesKey(sheet.date), JSON.stringify(sheet));
@@ -349,51 +359,80 @@
       rememberLocalSheet(sheet);
       refreshHistoryFromLocal();
       clearTimeout(syncTimer);
-      syncTimer = setTimeout(function () { syncRemote(sheet); }, 500);
+      syncTimer = setTimeout(function () { queueRemoteSync(sheet); }, 500);
     }
     function loadLocal(date) {
       lines = [];
+      var stored = null;
       try {
         var raw = localStorage.getItem(localLinesKey(date)) || localStorage.getItem(LS_LINES);
         var sheet = parseStoredSheet(raw);
-        if (sheet && Array.isArray(sheet.lines)) lines = sheet.lines.map(cloneLine);
+        if (sheet && Array.isArray(sheet.lines)) {
+          lines = sheet.lines.map(cloneLine);
+          stored = { date: date, lines: normalizeLines(sheet.lines), tolerance: FIXED_TOLERANCE, updatedAt: sheet.updatedAt || null };
+        }
       } catch(e) {}
+      activeSheetUpdatedAt = stored && stored.updatedAt;
+      return stored;
     }
-    async function syncRemote(sheet) {
+    function queueRemoteSync(sheet) {
+      var expectedUpdatedAt = sheet.date === activeDate ? remoteUpdatedAt : null;
+      var next = syncQueue.then(function () { return syncRemote(sheet, expectedUpdatedAt); });
+      syncQueue = next.catch(function () { return false; });
+      return next;
+    }
+    async function syncRemote(sheet, expectedUpdatedAt) {
       sheet = sheet || currentSheetPayload(activeDate);
       if (!sheet.date) return false;
       setSync("Saving shared sheet...", "warn");
       try {
         var response = await fetch("/api/production", {
           method: "PUT", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ date: sheet.date, lines: sheet.lines, tolerance: sheet.tolerance })
+          body: JSON.stringify({ date: sheet.date, lines: sheet.lines, tolerance: sheet.tolerance, expectedUpdatedAt: expectedUpdatedAt || null })
         });
-        if (!response.ok) throw new Error("offline");
+        var body = await response.json().catch(function () { return {}; });
+        if (!response.ok) throw new Error(body.error || "Save failed");
+        if (sheet.date === activeDate) {
+          remoteUpdatedAt = body.updatedAt || remoteUpdatedAt;
+          activeSheetUpdatedAt = body.updatedAt || activeSheetUpdatedAt;
+        }
         setSync("Autosaved " + sheet.date, "ok");
         return true;
       } catch (e) {
-        setSync("Saved on this device · shared database unavailable", "warn");
+        setSync(e && e.message ? e.message : "Saved on this device · shared database unavailable", "warn");
         return false;
       }
     }
     async function loadRemote(date) {
       var requestedDate = date || activeDate || dateEl.value;
       if (!requestedDate) return;
-      loadLocal(requestedDate); render();
+      var request = ++loadRequest;
+      var revisionAtStart = localRevision;
+      var localSheet = loadLocal(requestedDate);
+      render();
       setSync("Loading shared sheet...");
       try {
         var response = await fetch("/api/production?date=" + encodeURIComponent(requestedDate));
         if (!response.ok) throw new Error("offline");
         var body = await response.json();
         var sheet = body.sheets && body.sheets[0];
-        if (sheet && requestedDate === activeDate) {
-          if (sheet.updatedAt || sheetHasContent(sheet.lines) || !sheetHasContent(lines)) {
+        if (request !== loadRequest || requestedDate !== activeDate || revisionAtStart !== localRevision) return;
+        if (sheet) {
+          var localTime = Date.parse(localSheet && localSheet.updatedAt || "") || 0;
+          var remoteTime = Date.parse(sheet.updatedAt || "") || 0;
+          remoteUpdatedAt = sheet.updatedAt || null;
+          if (localSheet && sheetHasContent(localSheet.lines) && localTime > remoteTime) {
+            setSync("Restoring newer local sheet...", "warn");
+            await queueRemoteSync(localSheet);
+          } else {
             lines = normalizeLines(sheet.lines);
+            activeSheetUpdatedAt = sheet.updatedAt || null;
             rememberLocalSheet(sheet);
             render();
-          } else {
-            await syncRemote(currentSheetPayload(requestedDate));
           }
+        } else {
+          remoteUpdatedAt = null;
+          if (localSheet && sheetHasContent(localSheet.lines)) await queueRemoteSync(localSheet);
         }
         setSync("Loaded " + requestedDate, "ok");
       } catch (e) {
@@ -508,7 +547,12 @@
         itemInp.addEventListener("input", function () { line.item = itemInp.value; save(); });
         var badge = document.createElement("span"); badge.className = "badge idle"; badge.textContent = "—";
         var del = document.createElement("button"); del.className = "l-del"; del.type = "button"; del.textContent = "✕"; del.title = "Remove";
-        del.addEventListener("click", function () { lines.splice(originalIdx, 1); render(); save(); });
+        del.addEventListener("click", function () {
+          if (!confirm("Remove this production line? This cannot be undone.")) return;
+          lines.splice(originalIdx, 1);
+          render();
+          save();
+        });
         top.appendChild(n); top.appendChild(machine); top.appendChild(shiftSelect); top.appendChild(itemInp); top.appendChild(badge); top.appendChild(del);
 
         // Params grid (5 fields + actualKg + actualBags = 7 cols)
@@ -699,6 +743,7 @@
     function csvCell(value) {
       if (value == null) return "";
       var text = String(value);
+      if (/^[=+\-@]/.test(text)) text = "'" + text;
       if (/[",\r\n]/.test(text)) return '"' + text.replace(/"/g, '""') + '"';
       return text;
     }
@@ -756,6 +801,17 @@
       var parsed = JSON.parse(text);
       var sheets = normalizeBackupSheets(parsed);
       if (!sheets.length) throw new Error("No saved days found in that file");
+      var remoteSheets = await fetchRemoteHistory();
+      var existingDates = (remoteSheets || []).filter(function (remote) {
+        return sheets.some(function (sheet) { return sheet.date === remote.date; });
+      });
+      var prompt = existingDates.length
+        ? "Replace " + existingDates.length + " existing shared day(s) with " + sheets.length + " imported day(s)? This cannot be undone."
+        : "Import " + sheets.length + " day(s) into the shared database? This cannot be undone.";
+      if (!confirm(prompt)) {
+        setSync("Import cancelled", "warn");
+        return;
+      }
       sheets.forEach(function (sheet) { rememberLocalSheet(sheet); });
       var latest = sheets.reduce(function (best, sheet) {
         return !best || sheet.date > best.date ? sheet : best;
@@ -777,10 +833,11 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ sheets: sheets })
         });
-        if (!response.ok) throw new Error("offline");
+        var body = await response.json().catch(function () { return {}; });
+        if (!response.ok) throw new Error(body.error || "Import failed");
         setSync("Backup imported and synced", "ok");
       } catch (e) {
-        setSync("Backup imported on this device · database unavailable", "warn");
+        setSync(e && e.message ? e.message : "Backup imported on this device · database unavailable", "warn");
       }
       await refreshHistory();
       await loadRemote(activeDate).catch(function () {});
@@ -792,7 +849,11 @@
         if (sheet && sheet.date && sheetHasContent(sheet.lines)) map.set(sheet.date, sheet);
       });
       (Array.isArray(localSheets) ? localSheets : []).forEach(function (sheet) {
-        if (sheet && sheet.date && sheetHasContent(sheet.lines)) map.set(sheet.date, sheet);
+        if (!sheet || !sheet.date || !sheetHasContent(sheet.lines)) return;
+        var remote = map.get(sheet.date);
+        var localTime = Date.parse(sheet.updatedAt || "") || 0;
+        var remoteTime = Date.parse(remote && remote.updatedAt || "") || 0;
+        if (!remote || localTime > remoteTime) map.set(sheet.date, sheet);
       });
       return Array.from(map.values()).sort(function (a, b) { return b.date.localeCompare(a.date); });
     }
@@ -843,7 +904,7 @@
       var report = document.getElementById("dailyReport");
       if (!report) return;
       selectedDailyDate = selectedDailyDate || activeDate || dateEl.value;
-      report.innerHTML = Analytics.reportHtml(Analytics.summarizeSheet(sheetForDate(selectedDailyDate), selectedDailyShift), { scope: "day" });
+      report.innerHTML = Analytics.reportHtml(Analytics.summarizeSheet(sheetForDate(selectedDailyDate), selectedDailyShift, sheetsWithCurrent()), { scope: "day" });
     }
 
     window.activeCharts = { weekly: [], monthly: [] };
@@ -1464,7 +1525,7 @@
       document.body.classList.remove("print-daily", "print-weekly", "print-monthly");
       document.body.classList.add(className);
       var cleanup = function () {
-        document.body.classList.remove("print-daily", "print-weekly");
+        document.body.classList.remove("print-daily", "print-weekly", "print-monthly");
         document.title = previousTitle;
         window.removeEventListener("afterprint", cleanup);
       };
@@ -1478,8 +1539,14 @@
       ["editor", "daily", "weekly", "monthly"].forEach(function (name) {
         var panel = document.getElementById(name + "View");
         var btn = document.querySelector('.tab-btn[data-view="' + name + '"]');
-        if (panel) panel.classList.toggle("active", name === view);
-        if (btn) btn.classList.toggle("active", name === view);
+        if (panel) {
+          panel.classList.toggle("active", name === view);
+          panel.setAttribute("aria-hidden", String(name !== view));
+        }
+        if (btn) {
+          btn.classList.toggle("active", name === view);
+          btn.setAttribute("aria-selected", String(name === view));
+        }
       });
       if (view === "daily") renderDailyReport();
       if (view === "weekly") renderWeeklyReport();
@@ -1500,8 +1567,10 @@
         return;
       }
       clearTimeout(syncTimer);
-      if (activeDate) await syncRemote(currentSheetPayload(activeDate));
+      if (activeDate) await queueRemoteSync(currentSheetPayload(activeDate));
       activeDate = nextDate;
+      activeSheetUpdatedAt = null;
+      remoteUpdatedAt = null;
       dateEl.value = nextDate;
       selectedDailyDate = nextDate;
       selectedWeekStart = weekStart(nextDate);
@@ -1566,15 +1635,20 @@
     });
     dateEl.addEventListener("input", function(){ changeLoggingDate(dateEl.value); });
 
+    function setActiveButton(group, button) {
+      group.querySelectorAll("button").forEach(function (candidate) {
+        var active = candidate === button;
+        candidate.classList.toggle("active", active);
+        candidate.setAttribute("aria-pressed", String(active));
+      });
+    }
+
     // Topbar Shift Toggle Group
     var editorShiftGroup = document.getElementById("editorShiftGroup");
     if (editorShiftGroup) {
       editorShiftGroup.querySelectorAll(".shift-toggle-btn").forEach(function (btn) {
         btn.addEventListener("click", function () {
-          editorShiftGroup.querySelectorAll(".shift-toggle-btn").forEach(function (b) {
-            b.classList.remove("active");
-          });
-          btn.classList.add("active");
+          setActiveButton(editorShiftGroup, btn);
           activeShiftFilter = btn.dataset.shift;
           render();
         });
@@ -1586,10 +1660,7 @@
     if (dailyShiftFilterGroup) {
       dailyShiftFilterGroup.querySelectorAll("button").forEach(function (btn) {
         btn.addEventListener("click", function () {
-          dailyShiftFilterGroup.querySelectorAll("button").forEach(function (b) {
-            b.classList.remove("active");
-          });
-          btn.classList.add("active");
+          setActiveButton(dailyShiftFilterGroup, btn);
           selectedDailyShift = btn.dataset.shift;
           renderDailyReport();
           refreshHistory();
@@ -1602,10 +1673,7 @@
     if (weeklyShiftFilterGroup) {
       weeklyShiftFilterGroup.querySelectorAll("button").forEach(function (btn) {
         btn.addEventListener("click", function () {
-          weeklyShiftFilterGroup.querySelectorAll("button").forEach(function (b) {
-            b.classList.remove("active");
-          });
-          btn.classList.add("active");
+          setActiveButton(weeklyShiftFilterGroup, btn);
           selectedWeeklyShift = btn.dataset.shift;
           renderWeeklyReport();
           refreshHistory();
@@ -1618,10 +1686,7 @@
     if (monthlyShiftFilterGroup) {
       monthlyShiftFilterGroup.querySelectorAll("button").forEach(function (btn) {
         btn.addEventListener("click", function () {
-          monthlyShiftFilterGroup.querySelectorAll("button").forEach(function (b) {
-            b.classList.remove("active");
-          });
-          btn.classList.add("active");
+          setActiveButton(monthlyShiftFilterGroup, btn);
           selectedMonthlyShift = btn.dataset.shift;
           renderMonthlyReport();
           refreshHistory();
