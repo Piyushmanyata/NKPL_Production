@@ -22,12 +22,13 @@
   }
 
   function normalizeMachineName(name) {
-    var s = String(name || "").trim();
+    var s = String(name || "").trim().replace(/\s+/g, " ");
     if (!s) return "Unassigned machine";
     if (/^\d+$/.test(s)) {
       return "Machine " + parseInt(s, 10);
     }
-    var match = s.match(/^machine[- ]*(\d+)$/i);
+    // Collapse Machine / Mchine / Machne / MC / M/C / Mach + number to "Machine N"
+    var match = s.match(/^m(?:achine|chine|achne|achin|ach|\/?c)?[-.\s#]*(\d+)$/i);
     if (match) {
       return "Machine " + parseInt(match[1], 10);
     }

@@ -25,8 +25,10 @@
   var FIXED_TOLERANCE = 1.5;
 
   function nextMachineName(value) {
-    var current = String(value || "").trim();
-    if (!current) return "1";
+    var current = Analytics && Analytics.normalizeMachineName
+      ? Analytics.normalizeMachineName(value)
+      : String(value || "").trim();
+    if (!current || current === "Unassigned machine") return "Machine 1";
     var match = current.match(/^(.*?)(\d+)(\D*)$/);
     if (!match) return current;
     var next = String(Number(match[2]) + 1).padStart(match[2].length, "0");

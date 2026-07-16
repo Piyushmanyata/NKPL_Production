@@ -56,6 +56,57 @@ test("utilisation uses full completed periods, caps future hours, and marks unlo
   assert.equal(malformedMachine.underutilizedHours, malformedMachine.availableHours);
 });
 
+test("normalizeMachineName collapses typos and variants onto Machine N", function () {
+  const analytics = loadAnalytics();
+  const cases = [
+    ["1", "Machine 1"],
+    ["01", "Machine 1"],
+    ["Machine 1", "Machine 1"],
+    ["machine  2", "Machine 2"],
+    ["MACHINE-3", "Machine 3"],
+    ["Machine#4", "Machine 4"],
+    ["Mchine 1", "Machine 1"],
+    ["Mchine 5", "Machine 5"],
+    ["Machne 2", "Machine 2"],
+    ["Machin 3", "Machine 3"],
+    ["Mach 6", "Machine 6"],
+    ["MC 7", "Machine 7"],
+    ["M/C 8", "Machine 8"],
+    ["m/c9", "Machine 9"],
+    ["  Machine 10  ", "Machine 10"],
+    ["", "Unassigned machine"],
+    ["   ", "Unassigned machine"],
+    ["Line A", "Line A"],
+    ["Mould 1", "Mould 1"]
+  ];
+  cases.forEach(function (pair) {
+    assert.equal(analytics.normalizeMachineName(pair[0]), pair[1], JSON.stringify(pair[0]));
+  });
+});
+
+test("typo machine names merge into one utilisation row", function () {
+  const analytics = loadAnalytics();
+  const sheet = {
+    date: "2026-07-07",
+    lines: [
+      line("a", "Machine 1", "A", 8),
+      line("b", "Mchine 1", "B", 10),
+      line("c", "Mchine 2", "A", 6)
+    ]
+  };
+  const summary = analytics.summarizeSheet(sheet, "total", [sheet]);
+  const labels = summary.utilizationMachines.map(function (m) { return m.label; }).sort(function (a, b) {
+    return a.localeCompare(b, undefined, { numeric: true });
+  });
+  assert.equal(labels.join("|"), "Machine 1|Machine 2");
+  const m1 = summary.utilizationMachines.find(function (m) { return m.label === "Machine 1"; });
+  assert.ok(m1, "Machine 1 row missing");
+  assert.equal(m1.entries, 2);
+  assert.equal(m1.runHours, 18);
+  assert.equal(summary.machines.length, 2);
+  assert.ok(summary.machines.every(function (m) { return /^Machine \d+$/.test(m.label); }));
+});
+
 test("save validation rejects malformed, duplicate, and destructive line identities", function () {
   const valid = { date: "2026-07-08", lines: [line("safe", "Machine 1", "A", 8)] };
   assert.equal(validateSheet(valid).lines[0].id, "safe");
