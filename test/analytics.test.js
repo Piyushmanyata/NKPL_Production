@@ -5,6 +5,7 @@ const { readFileSync } = require("node:fs");
 const test = require("node:test");
 const vm = require("node:vm");
 const { validateSheet, validateSheets } = require("../api/lib/production-db");
+const { normalizeMachineName, normalizeMachineNameForStorage } = require("../api/lib/normalize-machine");
 
 function loadAnalytics() {
   const context = { window: {} };
@@ -105,6 +106,17 @@ test("typo machine names merge into one utilisation row", function () {
   assert.equal(m1.runHours, 18);
   assert.equal(summary.machines.length, 2);
   assert.ok(summary.machines.every(function (m) { return /^Machine \d+$/.test(m.label); }));
+});
+
+test("save path normalizes machine typos before persistence", function () {
+  assert.equal(normalizeMachineName("Mchine 1"), "Machine 1");
+  assert.equal(normalizeMachineNameForStorage("Mchine 2"), "Machine 2");
+  assert.equal(normalizeMachineNameForStorage(""), "");
+  const sheet = validateSheet({
+    date: "2026-07-08",
+    lines: [line("typo", "Mchine 3", "A", 8)]
+  });
+  assert.equal(sheet.lines[0].machine, "Machine 3");
 });
 
 test("save validation rejects malformed, duplicate, and destructive line identities", function () {

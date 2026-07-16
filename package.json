@@ -8,7 +8,8 @@
     "db:schema": "node scripts/apply-schema.mjs",
     "db:backup": "node scripts/backup-postgres.mjs",
     "db:restore": "node scripts/restore-backup.mjs",
-    "db:verify": "node scripts/verify-backup.mjs"
+    "db:verify": "node scripts/verify-backup.mjs",
+    "db:cleanup-machines": "node scripts/cleanup-machine-names.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.10.4"

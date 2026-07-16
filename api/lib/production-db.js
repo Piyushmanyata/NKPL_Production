@@ -8,6 +8,7 @@
  */
 
 const { getSql } = require("./neon");
+const { normalizeMachineNameForStorage } = require("./normalize-machine");
 
 const FIXED_TOLERANCE = 1.5;
 const SOURCE_APP = "nkpl-production";
@@ -48,6 +49,9 @@ function validateLine(line, index) {
   ["machine", "shift", "item", "remark"].forEach((field) => {
     if (normalized[field] != null) normalized[field] = String(normalized[field]);
   });
+  if (normalized.machine != null) {
+    normalized.machine = normalizeMachineNameForStorage(normalized.machine);
+  }
   ["cycleTime", "hours", "grammage", "kgPerBag", "actualBags"].forEach((field) => {
     if (normalized[field] == null || normalized[field] === "") return;
     const value = Number(normalized[field]);
