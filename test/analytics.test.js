@@ -57,31 +57,59 @@ test("utilisation uses full completed periods, caps future hours, and marks unlo
   assert.equal(malformedMachine.underutilizedHours, malformedMachine.availableHours);
 });
 
+const MACHINE_NAME_CASES = [
+  ["1", "Machine 1"],
+  ["01", "Machine 1"],
+  ["Machine 1", "Machine 1"],
+  ["machine  2", "Machine 2"],
+  ["MACHINE-3", "Machine 3"],
+  ["Machine#4", "Machine 4"],
+  ["Mchine 1", "Machine 1"],
+  ["Mchine 5", "Machine 5"],
+  ["Machne 2", "Machine 2"],
+  ["Machin 3", "Machine 3"],
+  ["Mach 6", "Machine 6"],
+  ["MC 7", "Machine 7"],
+  ["M/C 8", "Machine 8"],
+  ["m/c9", "Machine 9"],
+  ["  Machine 10  ", "Machine 10"],
+  // Arbitrary typos, not just the ones seen so far.
+  ["Maxchine 2", "Machine 2"],
+  ["Maxchine 11", "Machine 11"],
+  ["Maschine 6", "Machine 6"],
+  ["Mahcine 9", "Machine 9"],
+  ["Machien 4", "Machine 4"],
+  ["Machines 5", "Machine 5"],
+  ["Mchn 3", "Machine 3"],
+  ["M/C No 4", "Machine 4"],
+  ["Machine No. 12", "Machine 12"],
+  ["", "Unassigned machine"],
+  ["   ", "Unassigned machine"],
+  // Labels that are not machines stay untouched.
+  ["Line A", "Line A"],
+  ["Mould 1", "Mould 1"],
+  ["Mould 12", "Mould 12"],
+  ["Mixer 3", "Mixer 3"],
+  ["Blender 2", "Blender 2"],
+  ["Chiller 1", "Chiller 1"]
+];
+
 test("normalizeMachineName collapses typos and variants onto Machine N", function () {
   const analytics = loadAnalytics();
-  const cases = [
-    ["1", "Machine 1"],
-    ["01", "Machine 1"],
-    ["Machine 1", "Machine 1"],
-    ["machine  2", "Machine 2"],
-    ["MACHINE-3", "Machine 3"],
-    ["Machine#4", "Machine 4"],
-    ["Mchine 1", "Machine 1"],
-    ["Mchine 5", "Machine 5"],
-    ["Machne 2", "Machine 2"],
-    ["Machin 3", "Machine 3"],
-    ["Mach 6", "Machine 6"],
-    ["MC 7", "Machine 7"],
-    ["M/C 8", "Machine 8"],
-    ["m/c9", "Machine 9"],
-    ["  Machine 10  ", "Machine 10"],
-    ["", "Unassigned machine"],
-    ["   ", "Unassigned machine"],
-    ["Line A", "Line A"],
-    ["Mould 1", "Mould 1"]
-  ];
-  cases.forEach(function (pair) {
+  MACHINE_NAME_CASES.forEach(function (pair) {
     assert.equal(analytics.normalizeMachineName(pair[0]), pair[1], JSON.stringify(pair[0]));
+  });
+});
+
+test("browser and server normalizers stay in sync", function () {
+  const analytics = loadAnalytics();
+  MACHINE_NAME_CASES.forEach(function (pair) {
+    assert.equal(normalizeMachineName(pair[0]), pair[1], JSON.stringify(pair[0]));
+    assert.equal(
+      normalizeMachineName(pair[0]),
+      analytics.normalizeMachineName(pair[0]),
+      "drift on " + JSON.stringify(pair[0])
+    );
   });
 });
 
@@ -92,7 +120,8 @@ test("typo machine names merge into one utilisation row", function () {
     lines: [
       line("a", "Machine 1", "A", 8),
       line("b", "Mchine 1", "B", 10),
-      line("c", "Mchine 2", "A", 6)
+      line("c", "Mchine 2", "A", 6),
+      line("d", "Maxchine 2", "B", 4)
     ]
   };
   const summary = analytics.summarizeSheet(sheet, "total", [sheet]);
