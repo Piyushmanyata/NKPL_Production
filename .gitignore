@@ -2,3 +2,6 @@
 .env*
 node_modules/
 data/
+
+# Weekly/monthly CSV exports downloaded from the app
+nkpl-*.csv
