@@ -21,16 +21,52 @@
       .replace(/'/g, "&#39;");
   }
 
+  // Keep the matching rules in sync with api/lib/normalize-machine.js.
+  var MACHINE_WORD = "machine";
+  var MAX_MACHINE_TYPOS = 2;
+  var MACHINE_ABBREVIATIONS = ["m", "mc", "mch", "mcn", "mchn", "mach"];
+  var MACHINE_LABEL_RE = /^([A-Za-z][A-Za-z/.]*)?[-.\s#]*(?:no\.?|number)?[-.\s#]*(\d+)$/i;
+
+  /** Levenshtein distance, abandoned as soon as it is known to exceed max. */
+  function editDistance(a, b, max) {
+    if (Math.abs(a.length - b.length) > max) return max + 1;
+    var prev = [];
+    for (var j = 0; j <= b.length; j++) prev[j] = j;
+    for (var i = 1; i <= a.length; i++) {
+      var row = [i];
+      var best = i;
+      for (var k = 1; k <= b.length; k++) {
+        var cost = a.charAt(i - 1) === b.charAt(k - 1) ? 0 : 1;
+        row[k] = Math.min(prev[k] + 1, row[k - 1] + 1, prev[k - 1] + cost);
+        if (row[k] < best) best = row[k];
+      }
+      if (best > max) return max + 1;
+      prev = row;
+    }
+    return prev[b.length];
+  }
+
+  /** Does the word in front of the number read as a (possibly misspelt) "machine"? */
+  function isMachineWord(token) {
+    var word = token.replace(/[^a-z]/g, "");
+    if (!word) return true; // bare "7" or "#7"
+    if (MACHINE_ABBREVIATIONS.indexOf(word) !== -1) return true;
+    // Short words are too easy to confuse with other labels (Mix 1, Mould 2).
+    if (word.length < MACHINE_WORD.length - MAX_MACHINE_TYPOS) return false;
+    return editDistance(word, MACHINE_WORD, MAX_MACHINE_TYPOS) <= MAX_MACHINE_TYPOS;
+  }
+
+  /**
+   * Collapse anything that reads as "machine N" — Machine 1, Mchine 1, Maxchine 1,
+   * MC-1, M/C No 1, bare 1 — onto the canonical "Machine 1". Any other label is
+   * returned untouched.
+   */
   function normalizeMachineName(name) {
     var s = String(name || "").trim().replace(/\s+/g, " ");
     if (!s) return "Unassigned machine";
-    if (/^\d+$/.test(s)) {
-      return "Machine " + parseInt(s, 10);
-    }
-    // Collapse Machine / Mchine / Machne / MC / M/C / Mach + number to "Machine N"
-    var match = s.match(/^m(?:achine|chine|achne|achin|ach|\/?c)?[-.\s#]*(\d+)$/i);
-    if (match) {
-      return "Machine " + parseInt(match[1], 10);
+    var match = s.match(MACHINE_LABEL_RE);
+    if (match && isMachineWord(String(match[1] || "").toLowerCase())) {
+      return "Machine " + parseInt(match[2], 10);
     }
     return s;
   }
